@@ -1,0 +1,93 @@
+@import "tailwindcss";
+
+:root {
+  /* ─────────────────────────────────────────────
+     Nook — Canvas
+     ───────────────────────────────────────────── */
+
+  --canvas: #faf8f5;
+  --canvas-2: #f2efea;
+
+  /* ─────────────────────────────────────────────
+     Nook — Surfaces
+     ───────────────────────────────────────────── */
+
+  --surface-1: #ffffff;
+  --surface-2: #f7f5f2;
+  --surface-3: #ece8e2;
+
+  /* ─────────────────────────────────────────────
+     Nook — Typography
+     ───────────────────────────────────────────── */
+
+  --ink: #1e1e1e;
+  --muted: #5e5e5e;
+  --subtle: #8a8a8a;
+
+  /* ─────────────────────────────────────────────
+     Nook — Borders
+     ───────────────────────────────────────────── */
+
+  --line: #dddddd;
+
+  /* ─────────────────────────────────────────────
+     Nook — Primary / Sage
+     ───────────────────────────────────────────── */
+
+  --sage: #789b74;
+  --sage-light: #c9d9c4;
+  --sage-dark: #486047;
+
+  /* ─────────────────────────────────────────────
+     Nook — Semantic / Category Colors
+     ───────────────────────────────────────────── */
+
+  --red: #d16a6a;
+  --amber: #c89a45;
+  --moss: #6e8e5e;
+  --teal: #5b9188;
+  --navy: #4d698e;
+  --plum: #86669b;
+  --brown: #987257;
+  --rust: #a96855;
+  --olive: #7d8158;
+
+  /* ─────────────────────────────────────────────
+     Nook — Motion
+     ───────────────────────────────────────────── */
+
+  --ease-library: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  /* ─────────────────────────────────────────────
+     Nook — Radius
+     ───────────────────────────────────────────── */
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+}
+
+/* ───────────────────────────────────────────────
+   Global reset
+   ─────────────────────────────────────────────── */
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: var(--font-inter), Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
