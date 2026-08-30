@@ -1,0 +1,167 @@
+/* ============================================================
+   BASE
+   ============================================================ */
+
+.pixel-cat {
+  display: block;
+
+  overflow: visible;
+
+  shape-rendering: crispEdges;
+  image-rendering: pixelated;
+
+  transition: opacity 200ms ease;
+}
+
+.cat-layer {
+  fill: #141414;
+}
+
+.cat-ear,
+.cat-cheek,
+.cat-body,
+.cat-body-base {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.cat-eyes {
+  transform-box: fill-box;
+  transform-origin: center;
+
+  transition:
+    transform
+    120ms
+    steps(2, end);
+}
+
+/* ============================================================
+   SLEEPING
+   ============================================================ */
+
+.pixel-cat--sleeping {
+  opacity: 0.68;
+}
+
+.pixel-cat--sleeping .cat-eyes {
+  opacity: 0.45;
+}
+
+.pixel-cat--sleeping .cat-body,
+.pixel-cat--sleeping .cat-body-base,
+.pixel-cat--sleeping .cat-ear {
+  animation: none;
+}
+
+/* ============================================================
+   RESTING
+   ============================================================ */
+
+.pixel-cat--resting {
+  opacity: 1;
+}
+
+.pixel-cat--resting .cat-body {
+  animation:
+    pixel-cat-breathe
+    2400ms
+    steps(4, end)
+    infinite;
+}
+
+.pixel-cat--resting .cat-body-base {
+  animation:
+    pixel-cat-rest-base
+    2400ms
+    steps(4, end)
+    infinite;
+}
+
+.pixel-cat--resting .cat-ear {
+  animation:
+    pixel-cat-rest-ear
+    2400ms
+    steps(4, end)
+    infinite;
+}
+
+@keyframes pixel-cat-breathe {
+  0% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-1px);
+  }
+
+  100% {
+    transform: translateY(0);
+  }
+}
+
+@keyframes pixel-cat-rest-base {
+  0% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(1px);
+  }
+
+  100% {
+    transform: translateY(0);
+  }
+}
+
+@keyframes pixel-cat-rest-ear {
+  0% {
+    transform: translateY(0);
+  }
+
+  45% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-1px);
+  }
+
+  55% {
+    transform: translateY(0);
+  }
+
+  100% {
+    transform: translateY(0);
+  }
+}
+
+/* ============================================================
+   BLINK
+   ============================================================ */
+
+.pixel-cat--blinking .cat-eyes {
+  visibility: hidden;
+}
+
+/* ============================================================
+   ALERT
+   ============================================================ */
+
+.pixel-cat--alert {
+  opacity: 1;
+}
+
+/* ============================================================
+   REDUCED MOTION
+   ============================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  .cat-eyes,
+
+  .pixel-cat--resting .cat-body,
+  .pixel-cat--resting .cat-body-base,
+  .pixel-cat--resting .cat-ear {
+    animation: none;
+    transition: none;
+  }
+}
