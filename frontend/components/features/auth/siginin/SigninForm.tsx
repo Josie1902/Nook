@@ -195,6 +195,7 @@ export function SigninForm() {
       <form
         action={formAction}
         className="flex flex-col gap-5"
+        noValidate
       >
         {/* Form errors */}
         {formErrors.length > 0 && (
