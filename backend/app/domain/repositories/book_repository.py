@@ -15,9 +15,17 @@ class BookRepository(ABC):
         ...
 
     @abstractmethod
-    def list_by_user(self, user_id: uuid.UUID) -> List[Book]:
+    def list_by_user(self, user_id: str) -> List[Book]:
         ...
 
     @abstractmethod
     def update(self, book: Book) -> Book:
+        ...
+
+    @abstractmethod
+    def find_by_file_hash(
+        self,
+        user_id: str,
+        file_hash: str,
+    ) -> Book | None:
         ...

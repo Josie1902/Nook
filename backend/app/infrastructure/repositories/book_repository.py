@@ -76,7 +76,7 @@ class SQLAlchemyBookRepository(BookRepository):
 
         return _to_entity(model)
 
-    def list_by_user(self, user_id: uuid.UUID) -> List[Book]:
+    def list_by_user(self, user_id: str) -> List[Book]:
         models = (
             self.session
             .query(BookModel)
@@ -96,5 +96,25 @@ class SQLAlchemyBookRepository(BookRepository):
 
         self.session.commit()
         self.session.refresh(model)
+
+        return _to_entity(model)
+
+    def find_by_file_hash(
+        self,
+        user_id: str,
+        file_hash: str,
+    ) -> Optional[Book]:
+        model = (
+            self.session
+            .query(BookModel)
+            .filter(
+                BookModel.user_id == user_id,
+                BookModel.file_hash == file_hash,
+            )
+            .first()
+        )
+
+        if model is None:
+            return None
 
         return _to_entity(model)

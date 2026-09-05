@@ -12,5 +12,5 @@ class FindBookUseCase:
     def by_id(self, book_id: uuid.UUID) -> Optional[Book]:
         return self.book_repository.get_by_id(book_id)
 
-    def by_user(self, user_id: uuid.UUID) -> List[Book]:
+    def by_user(self, user_id: str) -> List[Book]:
         return self.book_repository.list_by_user(user_id)

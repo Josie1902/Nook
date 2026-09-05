@@ -29,14 +29,13 @@ class Book:
     mime_type: str
     # Original file size in bytes.
     file_size: int
-
-    # Unique identifier for the book.
-    id: uuid.UUID = field(default_factory=uuid.uuid4)
-
     # SHA-256 hash of the original PDF.
     # Used for duplicate-file detection within the user's library.
     # Nullable during initial book creation.
-    file_hash: Optional[str] = None
+    file_hash: str
+
+    # Unique identifier for the book.
+    id: uuid.UUID = field(default_factory=uuid.uuid4)
 
     # User-confirmed / editable book metadata.
     title: Optional[str] = None

@@ -8,6 +8,9 @@ from app.core.settings import settings
 from app.infrastructure.repositories.book_repository import SQLAlchemyBookRepository
 from app.infrastructure.storage.s3_pdf_storage import S3PdfStorage
 
+# Celery task publisher dependency
+from app.infrastructure.tasks.celery_task_publisher import CeleryTaskPublisher
+from app.worker.celery_app import celery_app
 
 def get_db():
     db = SessionLocal()
@@ -28,3 +31,6 @@ def get_pdf_storage() -> S3PdfStorage:
         bucket=settings.S3_BUCKET,
         region=settings.S3_REGION,
     )
+
+def get_task_publisher() -> CeleryTaskPublisher:
+    return CeleryTaskPublisher(celery_app)

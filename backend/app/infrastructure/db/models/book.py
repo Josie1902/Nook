@@ -19,7 +19,7 @@ class BookModel(Base):
 
     user_id: Mapped[str] = mapped_column(
         String,
-        ForeignKey('user.id'),
+        ForeignKey('public.user.id'), # Note: the table name follows naming convention set by BetterAuth
         nullable=False,
         index=True,
     )
@@ -45,9 +45,9 @@ class BookModel(Base):
         nullable=False,
     )
 
-    file_hash: Mapped[str | None] = mapped_column(
+    file_hash: Mapped[str] = mapped_column(
         String(64),
-        nullable=True,
+        nullable=False,
     )
 
     # User-confirmed / editable metadata.
@@ -119,6 +119,7 @@ class BookModel(Base):
     )
 
     __table_args__ = (
+        # TODO: ProcessingRun temporarily disabled.
         # Composite foreign key to ensure that the active processing run belongs to this book.
         ForeignKeyConstraint(
             ["active_processing_run_id", "id"],

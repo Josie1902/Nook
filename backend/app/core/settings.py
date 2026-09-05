@@ -14,7 +14,13 @@ class Settings(BaseSettings):
     S3_BUCKET: str
     S3_REGION: str = "us-east-1"
 
+    MAX_PDF_SIZE_MB: int = 30
+
     CELERY_BROKER_URL: str
     CELERY_RESULT_BACKEND: str
+
+    @property
+    def max_pdf_size_bytes(self) -> int:
+        return self.MAX_PDF_SIZE_MB * 1024 * 1024
 
 settings = Settings()
