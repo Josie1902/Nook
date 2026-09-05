@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     S3_BUCKET: str
     S3_REGION: str = "us-east-1"
 
-    MAX_PDF_SIZE_MB: int = 30
+    MAX_PDF_SIZE_MB: int = 20
 
     CELERY_BROKER_URL: str
     CELERY_RESULT_BACKEND: str
