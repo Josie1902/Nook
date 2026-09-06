@@ -43,7 +43,7 @@ def upgrade():
         sa.UniqueConstraint("user_id", "file_hash", name="books_user_file_hash_key"),
     )
     op.create_index("ix_books_user_id", "books", ["user_id"]) # use the index to quickly locate the relevant row
-    # TODO: Composite FK added after processing_runs table is created:
+    # DONE: Composite FK added after processing_runs table is created:
     # op.create_foreign_key(
     #     "books_active_processing_run_fkey",
     #     "books",

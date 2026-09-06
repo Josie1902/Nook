@@ -1,3 +1,5 @@
+import uuid
+
 from pydantic_settings import BaseSettings
 
 
@@ -18,6 +20,8 @@ class Settings(BaseSettings):
 
     CELERY_BROKER_URL: str
     CELERY_RESULT_BACKEND: str
+
+    PROCESS_CONFIG_VERSION: str
 
     @property
     def max_pdf_size_bytes(self) -> int:
