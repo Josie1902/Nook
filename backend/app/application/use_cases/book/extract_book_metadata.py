@@ -1,17 +1,15 @@
-from app.application.exceptions.processing_run import ProcessingError
+from app.application.exceptions.processing_run import (
+    MetadataExtractionError,
+)
 from app.application.metadata_extraction.ports import (
     DocumentTextExtractor,
     MetadataProvider,
     PdfMetadataExtractor,
     BookIdentityResolver,
 )
-from app.application.metadata_extraction.metadata_extractor import MetadataExtractor
+from app.application.metadata_extraction.metadata_extractor import MetadataExtractor # placing this here as a temp helper
 from app.application.storage.pdf_storage import PdfStorage
 from app.domain.entities.book import Book
-
-
-class MetadataExtractionError(ProcessingError):
-    pass
 
 
 class ExtractBookMetadataUseCase:
@@ -77,6 +75,6 @@ class ExtractBookMetadataUseCase:
         except Exception as exc:
             raise MetadataExtractionError(
                 error_code="metadata_extraction_failed",
-                message="Failed to extract metadata for the book.",
+                message=str(exc),
                 details={"book_id": str(book.id)},
             ) from exc

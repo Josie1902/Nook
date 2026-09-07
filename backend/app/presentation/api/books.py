@@ -19,7 +19,7 @@ from app.presentation.api.schemas.book import (
     BookMetadataUpdate,
     BookResponse,
 )
-from backend.app.domain.entities.user import User
+from app.domain.entities.user import User
 
 router = APIRouter(
     prefix="/books",
