@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.presentation.api.health import router as health_router
 from app.presentation.api.books import router as books_router
+from app.presentation.api.users import router as user_router
 
 from app.application.exceptions.base import ApplicationError
 from app.infrastructure.pdf.exceptions import PDFError
@@ -21,7 +22,6 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",
-        "http://127.0.0.1:3000",
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -32,6 +32,7 @@ app.add_middleware(
 # Add Routers
 # ─────────────────────────────
 app.include_router(health_router)
+app.include_router(user_router)
 app.include_router(books_router)
 
 # ─────────────────────────────
