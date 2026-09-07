@@ -69,6 +69,6 @@ class UploadBookUseCase:
         book = self.book_repository.add(book)
 
         # 8. Start processing
-        self.task_publisher.publish_process_book(book.id)
+        self.task_publisher.publish_extract_metadata(book.id)
 
         return book

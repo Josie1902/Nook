@@ -9,6 +9,7 @@ from app.infrastructure.auth.better_auth_session_repository import BetterAuthSes
 
 # S3 storage depedency
 from app.infrastructure.repositories.book_repository import SQLAlchemyBookRepository
+from app.infrastructure.repositories.processing_run_repository import SQLAlchemyProcessingRunRepository
 from app.infrastructure.storage.s3_pdf_storage import S3PdfStorage
 
 # Celery task publisher dependency
@@ -60,6 +61,11 @@ def get_current_user(
 
 def get_book_repository(db: Session = Depends(get_db)) -> SQLAlchemyBookRepository:
     return SQLAlchemyBookRepository(db)
+
+def get_processing_run_repository(
+    db: Session = Depends(get_db),
+) -> SQLAlchemyProcessingRunRepository:
+    return SQLAlchemyProcessingRunRepository(db)
 
 def get_pdf_storage() -> S3PdfStorage:
     return S3PdfStorage(

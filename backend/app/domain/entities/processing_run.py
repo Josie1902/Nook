@@ -12,10 +12,10 @@ class ProcessingRunStatus(str, Enum):
     COMPLETED = "completed"
     FAILED = "failed"
     CANCELLED = "cancelled"
+    VALIDATION_REQUIRED = "validation_required"
 
 
 class ProcessingRunStage(str, Enum):
-    STORING = "storing"
     METADATA = "metadata"
     EXTRACTING = "extracting"
     CHUNKING = "chunking"
