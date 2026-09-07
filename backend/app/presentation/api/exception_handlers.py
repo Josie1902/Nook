@@ -1,9 +1,6 @@
 from fastapi import Request
 from fastapi.responses import JSONResponse
 
-from app.application.exceptions.base import ApplicationError
-from app.infrastructure.pdf.exceptions import PDFError
-
 
 APPLICATION_STATUS_CODES = {
     "BookAlreadyExistsError": 409,
@@ -18,7 +15,7 @@ PDF_STATUS_CODES = {
 }
 
 
-async def application_error_handler(
+def application_error_handler(
     request: Request, # request is not used but is included for consistency with FastAPI' params
     exc: Exception,
 ) -> JSONResponse:
@@ -36,7 +33,7 @@ async def application_error_handler(
     )
 
 
-async def pdf_error_handler(
+def pdf_error_handler(
     request: Request,
     exc: Exception,
 ) -> JSONResponse:
@@ -54,7 +51,7 @@ async def pdf_error_handler(
     )
 
 
-async def unexpected_error_handler(
+def unexpected_error_handler(
     request: Request,
     exc: Exception,
 ) -> JSONResponse:
