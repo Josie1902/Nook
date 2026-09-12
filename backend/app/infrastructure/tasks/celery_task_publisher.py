@@ -15,8 +15,8 @@ class CeleryTaskPublisher(TaskPublisher):
             kwargs={"run_id": str(run_id)},
         )
 
-    def publish_chunk_content(self, book_id: uuid.UUID) -> None:
+    def publish_process_book_content(self, book_id: uuid.UUID) -> None:
         self.celery_app.send_task(
-            "CHUNK_CONTENT",
+            "PROCESS_BOOK_CONTENT",
             kwargs={"book_id": str(book_id)},
         )

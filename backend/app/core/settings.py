@@ -30,12 +30,26 @@ class LLMConfig(BaseModel):
     metadata: StageConfig
 
 
+class HuggingFaceEmbeddingConfig(BaseModel):
+    model: str = "BAAI/bge-base-en-v1.5"
+
+
+class OpenAIEmbeddingConfig(BaseModel):
+    api_key: SecretStr | None = None
+    model: str = "text-embedding-3-small"
+
+
+class EmbeddingConfig(BaseModel):
+    provider: Literal["openai", "huggingface"] = "huggingface"
+    openai: OpenAIEmbeddingConfig
+    hugging_face: HuggingFaceEmbeddingConfig
+
+
 class HuggingFaceTokenizerConfig(BaseModel):
-    tokenizer: str
     max_tokens: int
 
+
 class OpenAITokenizerConfig(BaseModel):
-    tokenizer: str
     max_tokens: int
 
 class TokenizerConfig(BaseModel):
@@ -77,6 +91,8 @@ class Settings(BaseSettings):
     GOOGLE_BOOKS_API_KEY: Optional[str] = None
 
     TOKENIZER: TokenizerConfig
+
+    EMBEDDING: EmbeddingConfig
 
     @property
     def max_pdf_size_bytes(self) -> int:
