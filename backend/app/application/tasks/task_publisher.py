@@ -8,5 +8,5 @@ class TaskPublisher(ABC):
         ...
 
     @abstractmethod
-    def publish_chunk_content(self, book_id: uuid.UUID) -> None:
+    def publish_process_book_content(self, book_id: uuid.UUID) -> None:
         ...

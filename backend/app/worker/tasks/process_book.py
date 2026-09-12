@@ -20,8 +20,13 @@ from app.domain.repositories.book_repository import BookRepository
 from app.domain.repositories.processing_run_repository import (
     ProcessingRunRepository,
 )
+from app.application.use_cases.book.embed_book_chunks import (
+    EmbedBookChunksUseCase,
+)
 from app.infrastructure.chunking.docling_chunker import DoclingPdfChunker
+from app.infrastructure.chunking.factory import create_embedding_tokenizer
 from app.infrastructure.db.session import SessionLocal
+from app.infrastructure.embedding.factory import create_embedding_provider
 from app.infrastructure.llm.factory import get_llm_client
 from app.infrastructure.llm.stages.metadata_extractor import (
     LLMBookIdentityResolver,
@@ -35,6 +40,9 @@ from app.infrastructure.pdf.pdf_text_extractor import PyPdfDocumentTextExtractor
 from app.infrastructure.repositories.book_repository import (
     SQLAlchemyBookRepository,
 )
+from app.infrastructure.repositories.chunk_embedding_repository import (
+    SQLAlchemyChunkEmbeddingRepository,
+)
 from app.infrastructure.repositories.chunk_repository import (
     SQLAlchemyChunkRepository,
 )
@@ -43,7 +51,6 @@ from app.infrastructure.repositories.processing_run_repository import (
 )
 from app.infrastructure.storage.s3_pdf_storage import S3PdfStorage
 from app.worker.celery_app import celery_app
-from app.infrastructure.chunking.factory import create_tokenizer
 
 def fail_processing(
     run: ProcessingRun,
@@ -134,13 +141,14 @@ def extract_metadata_task(run_id: uuid.UUID) -> None:
 
 # Note: Made the decision to merge both extraction
 # and chunking as extracted texts are not persisted
-@celery_app.task(name="CHUNK_CONTENT")
-def chunk_content_task(book_id: uuid.UUID) -> None:
+@celery_app.task(name="PROCESS_BOOK_CONTENT")
+def process_book_content_task(book_id: uuid.UUID) -> None:
     session = SessionLocal()
 
     book_repository = SQLAlchemyBookRepository(session)
     processing_run_repository = SQLAlchemyProcessingRunRepository(session)
     chunk_repository = SQLAlchemyChunkRepository(session)
+    chunk_embedding_repository = SQLAlchemyChunkEmbeddingRepository(session)
 
     book = None
     run = None
@@ -170,7 +178,7 @@ def chunk_content_task(book_id: uuid.UUID) -> None:
         chunks = ChunkBookUseCase(
             chunk_repository=chunk_repository,
             chunking_service=DoclingPdfChunker(
-                tokenizer=create_tokenizer()
+                tokenizer=create_embedding_tokenizer()
             ),
         ).execute(run.id, document)
 
@@ -181,6 +189,22 @@ def chunk_content_task(book_id: uuid.UUID) -> None:
 
         run.current_stage = ProcessingRunStage.EMBEDDING
         processing_run_repository.update(run)
+
+        embedding_provider = create_embedding_provider()
+        EmbedBookChunksUseCase(
+            chunk_embedding_repository=chunk_embedding_repository,
+            embedding_provider=embedding_provider,
+        ).execute(chunks)
+
+        run.metrics["embeddings_total"] = len(chunks)
+        run.current_stage = None
+        run.status = ProcessingRunStatus.COMPLETED
+        run.completed_at = datetime.now(timezone.utc)
+        processing_run_repository.update(run)
+
+        book.processing_status = ProcessingStatus.COMPLETED
+        book.active_processing_run_id = None
+        book_repository.update(book)
 
     except Exception as exc:
         if book is not None and run is not None:

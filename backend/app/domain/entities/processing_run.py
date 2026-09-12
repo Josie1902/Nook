@@ -19,7 +19,6 @@ class ProcessingRunStage(str, Enum):
     METADATA = "metadata"
     CHUNKING = "chunking"
     EMBEDDING = "embedding"
-    FINALIZING = "finalizing"
 
 
 @dataclass

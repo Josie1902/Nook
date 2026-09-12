@@ -177,7 +177,7 @@ def update_book_metadata(
     book_repository.update(book)
     processing_run_repository.update(run)
 
-    task_publisher.publish_chunk_content(book.id)
+    task_publisher.publish_process_book_content(book.id)
 
     return BookMetadataResponse(
         id=book.id,
