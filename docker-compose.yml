@@ -111,6 +111,7 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     env_file: .env
+    gpus: all
     depends_on:
       rabbitmq:
         condition: service_healthy
