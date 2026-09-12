@@ -1,7 +1,7 @@
 import uuid
 from typing import Optional
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from app.domain.entities.processing_run import (
@@ -52,6 +52,7 @@ class SQLAlchemyProcessingRunRepository(ProcessingRunRepository):
         self.session.add(model)
         self.session.commit()
         self.session.refresh(model)
+        self._prune_history(run.book_id)
         return _to_entity(model)
 
     def get_by_id(self, run_id: uuid.UUID) -> Optional[ProcessingRun]:
@@ -65,16 +66,41 @@ class SQLAlchemyProcessingRunRepository(ProcessingRunRepository):
                 ProcessingRunStatus.PENDING.value,
                 ProcessingRunStatus.RUNNING.value,
             ]),
-        )
+        ).order_by(ProcessingRunModel.created_at.desc())
         model = self.session.scalar(statement)
         return _to_entity(model) if model else None
 
     def list_by_book(self, book_id: uuid.UUID) -> list[ProcessingRun]:
         statement = select(ProcessingRunModel).where(
             ProcessingRunModel.book_id == book_id
-        )
+        ).order_by(ProcessingRunModel.created_at.desc())
         models = self.session.scalars(statement).all()
         return [_to_entity(model) for model in models]
+
+    def _prune_history(self, book_id: uuid.UUID) -> None:
+        runs = self.session.scalars(
+            select(ProcessingRunModel)
+            .where(ProcessingRunModel.book_id == book_id)
+            .order_by(ProcessingRunModel.created_at.desc())
+        ).all()
+
+        stale_run_ids = [
+            run.id
+            for run in runs[3:]
+            if run.status
+            in {
+                ProcessingRunStatus.COMPLETED.value,
+                ProcessingRunStatus.FAILED.value,
+                ProcessingRunStatus.CANCELLED.value,
+            }
+        ]
+        if stale_run_ids:
+            self.session.execute(
+                delete(ProcessingRunModel).where(
+                    ProcessingRunModel.id.in_(stale_run_ids)
+                )
+            )
+            self.session.commit()
 
     def update(self, run: ProcessingRun) -> ProcessingRun:
         model = self.session.get(ProcessingRunModel, run.id)

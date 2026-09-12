@@ -9,14 +9,14 @@ class CeleryTaskPublisher(TaskPublisher):
     def __init__(self, celery_app: Celery):
         self.celery_app = celery_app
 
-    def publish_extract_metadata(self, book_id: uuid.UUID) -> None:
+    def publish_extract_metadata(self, run_id: uuid.UUID) -> None:
         self.celery_app.send_task(
             "EXTRACT_METADATA",
-            kwargs={"book_id": str(book_id)},
+            kwargs={"run_id": str(run_id)},
         )
 
-    def publish_extract_content(self, book_id: uuid.UUID) -> None:
+    def publish_chunk_content(self, book_id: uuid.UUID) -> None:
         self.celery_app.send_task(
-            "EXTRACT_CONTENT",
+            "CHUNK_CONTENT",
             kwargs={"book_id": str(book_id)},
         )

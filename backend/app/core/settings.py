@@ -30,6 +30,20 @@ class LLMConfig(BaseModel):
     metadata: StageConfig
 
 
+class HuggingFaceTokenizerConfig(BaseModel):
+    tokenizer: str
+    max_tokens: int
+
+class OpenAITokenizerConfig(BaseModel):
+    tokenizer: str
+    max_tokens: int
+
+class TokenizerConfig(BaseModel):
+    provider: Literal["openai", "huggingface"] = "huggingface"
+    openai: OpenAITokenizerConfig
+    hugging_face: HuggingFaceTokenizerConfig
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -61,6 +75,8 @@ class Settings(BaseSettings):
     LLM: LLMConfig
 
     GOOGLE_BOOKS_API_KEY: Optional[str] = None
+
+    TOKENIZER: TokenizerConfig
 
     @property
     def max_pdf_size_bytes(self) -> int:
