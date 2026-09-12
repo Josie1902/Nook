@@ -1,6 +1,5 @@
 from app.application.storage.pdf_storage import PdfStorage
 from app.application.storage.storage_key_generator import generate_storage_key
-from app.application.tasks.task_publisher import TaskPublisher
 from app.application.utils.file_hash import calculate_file_hash
 from app.domain.entities.book import Book
 from app.domain.repositories.book_repository import BookRepository
@@ -12,11 +11,9 @@ class UploadBookUseCase:
         self,
         book_repository: BookRepository,
         pdf_storage: PdfStorage,
-        task_publisher: TaskPublisher,
     ):
         self.book_repository = book_repository
         self.pdf_storage = pdf_storage
-        self.task_publisher = task_publisher
 
     def execute(
         self,
@@ -67,8 +64,5 @@ class UploadBookUseCase:
 
         # 7. Persist book
         book = self.book_repository.add(book)
-
-        # 8. Start processing
-        self.task_publisher.publish_extract_metadata(book.id)
 
         return book

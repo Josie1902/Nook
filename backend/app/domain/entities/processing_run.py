@@ -17,7 +17,6 @@ class ProcessingRunStatus(str, Enum):
 
 class ProcessingRunStage(str, Enum):
     METADATA = "metadata"
-    EXTRACTING = "extracting"
     CHUNKING = "chunking"
     EMBEDDING = "embedding"
     FINALIZING = "finalizing"

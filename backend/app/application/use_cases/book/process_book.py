@@ -9,6 +9,7 @@ from app.domain.entities.processing_run import (
 )
 from app.domain.repositories.book_repository import BookRepository
 from app.domain.repositories.processing_run_repository import ProcessingRunRepository
+from app.application.tasks.task_publisher import TaskPublisher
 from app.application.exceptions.book import (
     BookNotFoundError,
     BookProcessingError,
@@ -20,9 +21,11 @@ class ProcessBookUseCase:
         self,
         book_repository: BookRepository,
         processing_run_repository: ProcessingRunRepository,
+        task_publisher: TaskPublisher,
     ):
         self.book_repository = book_repository
         self.processing_run_repository = processing_run_repository
+        self.task_publisher = task_publisher
 
     def execute(
         self,
@@ -38,12 +41,7 @@ class ProcessBookUseCase:
             active_run = self.processing_run_repository.get_by_id(
                 book.active_processing_run_id
             )
-
-            if (
-                active_run
-                and active_run.status
-                == ProcessingRunStatus.VALIDATION_REQUIRED
-            ):
+            if active_run and active_run.status == ProcessingRunStatus.VALIDATION_REQUIRED:
                 return
 
         if self.processing_run_repository.get_active_by_book(book.id):
@@ -73,3 +71,4 @@ class ProcessBookUseCase:
         # Metadata
         run.current_stage = ProcessingRunStage.METADATA
         self.processing_run_repository.update(run)
+        self.task_publisher.publish_extract_metadata(run.id)

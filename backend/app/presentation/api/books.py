@@ -3,6 +3,8 @@ import uuid
 from fastapi import APIRouter, Depends, UploadFile, status, HTTPException
 
 from app.application.use_cases.book.upload_book import UploadBookUseCase
+from app.application.use_cases.book.process_book import ProcessBookUseCase
+from app.core.settings import settings
 from app.domain.entities.processing_run import (
     ProcessingRunStage,
     ProcessingRunStatus,
@@ -36,6 +38,7 @@ async def upload_book(
     file: UploadFile,
     user: User = Depends(get_current_user),
     book_repository=Depends(get_book_repository),
+    processing_run_repository=Depends(get_processing_run_repository),
     pdf_storage=Depends(get_pdf_storage),
     task_publisher=Depends(get_task_publisher),
 ):
@@ -50,7 +53,6 @@ async def upload_book(
     use_case = UploadBookUseCase(
         book_repository,
         pdf_storage,
-        task_publisher,
     )
 
     book = use_case.execute(
@@ -58,6 +60,12 @@ async def upload_book(
         file.filename,
         content,
     )
+
+    ProcessBookUseCase(
+        book_repository=book_repository,
+        processing_run_repository=processing_run_repository,
+        task_publisher=task_publisher,
+    ).execute(book.id, settings.PROCESS_CONFIG_VERSION)
 
     return BookResponse(
         id=book.id,
@@ -164,12 +172,12 @@ def update_book_metadata(
         setattr(book, field_name, getattr(metadata, field_name))
 
     run.status = ProcessingRunStatus.RUNNING
-    run.current_stage = ProcessingRunStage.EXTRACTING
+    run.current_stage = ProcessingRunStage.CHUNKING
 
     book_repository.update(book)
     processing_run_repository.update(run)
 
-    task_publisher.publish_extract_content(book.id)
+    task_publisher.publish_chunk_content(book.id)
 
     return BookMetadataResponse(
         id=book.id,
