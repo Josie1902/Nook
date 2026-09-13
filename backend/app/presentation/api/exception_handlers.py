@@ -5,6 +5,9 @@ from fastapi.responses import JSONResponse
 APPLICATION_STATUS_CODES = {
     "BookAlreadyExistsError": 409,
     "BookNotFoundError": 404,
+    "ProcessingRunNotFoundError": 404,
+    "RetryNotAllowedError": 409,
+    "BookProcessingError": 409,
 }
 
 

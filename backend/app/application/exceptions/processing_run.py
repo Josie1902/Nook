@@ -49,3 +49,11 @@ class ChunkingError(ProcessingError):
 
 class EmbeddingError(ProcessingError):
     pass
+
+
+class ProcessingRunNotFoundError(ProcessingError):
+    """Raised when a book does not have any processing run."""
+
+
+class RetryNotAllowedError(ProcessingError):
+    """Raised when a processing run cannot be retried in its current state."""

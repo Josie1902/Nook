@@ -37,7 +37,7 @@ class UploadBookUseCase:
             # Duplicate book found, raise an exception
             # for eventual rejection of the upload request.
             raise DuplicateBookError(
-                "This book already exists in your library."
+                f"{existing_book.title} already exists in your library."
             )
 
         # 4. Generate storage key
