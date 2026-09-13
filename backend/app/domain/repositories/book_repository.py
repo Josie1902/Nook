@@ -19,6 +19,10 @@ class BookRepository(ABC):
         ...
 
     @abstractmethod
+    def list_incomplete_by_user(self, user_id: str) -> List[Book]:
+        ...
+
+    @abstractmethod
     def update(self, book: Book) -> Book:
         ...
 

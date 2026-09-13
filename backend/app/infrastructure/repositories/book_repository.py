@@ -86,6 +86,21 @@ class SQLAlchemyBookRepository(BookRepository):
 
         return [_to_entity(model) for model in models]
 
+    def list_incomplete_by_user(self, user_id: str) -> list[Book]:
+        models = (
+            self.session
+            .query(BookModel)
+            .filter(
+                BookModel.user_id == user_id,
+                BookModel.processing_status.notin_([
+                    ProcessingStatus.COMPLETED,
+                ])
+            )
+            .all()
+        )
+        
+        return [_to_entity(model) for model in models]
+
     def update(self, book: Book) -> Book:
         model = self.session.get(BookModel, book.id)
 
@@ -118,3 +133,12 @@ class SQLAlchemyBookRepository(BookRepository):
             return None
 
         return _to_entity(model)
+
+    def delete(self, book: Book) -> None:
+        book = self.session.get(BookModel, book.id)
+
+        if book is None:
+            return
+
+        self.session.delete(book)
+        self.session.commit()

@@ -14,8 +14,6 @@ class ProcessingStatus(str, Enum):
     COMPLETED = "completed"
     # The latest processing run failed.
     FAILED = "failed"
-    # The latest processing run was cancelled.
-    CANCELLED = "cancelled"
 
 
 @dataclass
