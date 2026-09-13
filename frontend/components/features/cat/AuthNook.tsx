@@ -8,6 +8,8 @@ export type AuthNookState =
   | "resting"
   | "alert";
 
+export type PixelCatState = AuthNookState;
+
 interface AuthNookProps {
   state: AuthNookState;
 
