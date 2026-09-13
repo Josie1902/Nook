@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Cormorant_Garamond, Inter } from "next/font/google";
 import "./globals.css";
+import { Toaster } from "sonner";
+import { GlobalErrorToaster } from "@/components/ui/ErrorToast";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -28,6 +30,8 @@ export default function RootLayout({
       <body
         className={`${inter.variable} ${cormorant.variable} antialiased`}
       >
+        <Toaster position="bottom-right" />
+        <GlobalErrorToaster />
         {children}
       </body>
     </html>
