@@ -1,4 +1,4 @@
-FROM python:3.11-slim
+FROM python:3.12-slim
 
 WORKDIR /workspace
 
@@ -7,6 +7,11 @@ RUN apt-get update && apt-get install -y \
     libxcb1 \
     libglib2.0-0 \
     libgl1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install curl for healthchecks and other purposes
+RUN apt-get update \
+    && apt-get install -y curl \
     && rm -rf /var/lib/apt/lists/*
     
 # Install uv
@@ -20,8 +25,8 @@ RUN uv sync --frozen --no-dev
 
 # Copy application source
 COPY app ./app
-# COPY alembic.ini .
-# COPY migrations ./migrations
+COPY alembic.ini .
+COPY migrations ./migrations
 
 # Use the virtual environment created by uv
 ENV PATH="/workspace/.venv/bin:$PATH"
