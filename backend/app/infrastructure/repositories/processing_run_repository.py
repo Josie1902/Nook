@@ -59,6 +59,13 @@ class SQLAlchemyProcessingRunRepository(ProcessingRunRepository):
         model = self.session.get(ProcessingRunModel, run_id)
         return _to_entity(model) if model else None
 
+    def get_latest_by_book_id(self, book_id: uuid.UUID) -> Optional[ProcessingRun]:
+        statement = select(ProcessingRunModel).where(
+            ProcessingRunModel.book_id == book_id
+        ).order_by(ProcessingRunModel.created_at.desc())
+        model = self.session.scalar(statement)
+        return _to_entity(model) if model else None
+
     def get_active_by_book(self, book_id: uuid.UUID) -> Optional[ProcessingRun]:
         statement = select(ProcessingRunModel).where(
             ProcessingRunModel.book_id == book_id,

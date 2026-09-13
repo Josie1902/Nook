@@ -16,6 +16,10 @@ class ProcessingRunRepository(ABC):
         ...
 
     @abstractmethod
+    def get_latest_by_book_id(self, book_id: uuid.UUID) -> Optional[ProcessingRun]:
+        ...
+
+    @abstractmethod
     def update(self, run: ProcessingRun) -> ProcessingRun:
         ...
 

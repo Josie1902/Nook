@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from typing import List, Optional
+from typing import Any, List, Optional
 
 from pydantic import BaseModel
 
@@ -20,6 +20,23 @@ class BookResponse(BaseModel):
     processing_status: str
     created_at: datetime
     updated_at: datetime
+
+
+class ProcessingRunErrorResponse(BaseModel):
+    code: Optional[str] = None
+    message: Optional[str] = None
+    details: dict[str, Any] = {}
+
+
+class ProcessingRunResponse(BaseModel):
+    processing_run_id: uuid.UUID
+    status: str
+    stage: Optional[str] = None
+    metrics: dict[str, Any] = {}
+    error: Optional[ProcessingRunErrorResponse] = None
+    started_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    created_at: datetime
 
 
 class BookMetadataUpdate(BaseModel):

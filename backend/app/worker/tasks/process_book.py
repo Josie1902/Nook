@@ -163,29 +163,47 @@ def process_book_content_task(book_id: uuid.UUID) -> None:
             book.active_processing_run_id
         )
 
+        if run is None:
+            return
+
+        if run.status == ProcessingRunStatus.PENDING and run.current_stage in {
+            ProcessingRunStage.CHUNKING,
+            ProcessingRunStage.EMBEDDING,
+        }:
+            run.status = ProcessingRunStatus.RUNNING
+            processing_run_repository.update(run)
+
         if (
-            run is None
-            or run.status != ProcessingRunStatus.RUNNING
-            or run.current_stage != ProcessingRunStage.CHUNKING
+            run.status != ProcessingRunStatus.RUNNING
+            or run.current_stage not in {
+                ProcessingRunStage.CHUNKING,
+                ProcessingRunStage.EMBEDDING,
+            }
         ):
             return
 
-        document = ExtractBookDocumentUseCase(
-            pdf_storage=_pdf_storage(),
-            pdf_extractor=DoclingPdfExtractor(),
-        ).execute(book)
+        chunks = chunk_repository.list_by_processing_run(run.id)
 
-        chunks = ChunkBookUseCase(
-            chunk_repository=chunk_repository,
-            chunking_service=DoclingPdfChunker(
-                tokenizer=create_embedding_tokenizer()
-            ),
-        ).execute(run.id, document)
+        if run.current_stage == ProcessingRunStage.CHUNKING:
+            document = ExtractBookDocumentUseCase(
+                pdf_storage=_pdf_storage(),
+                pdf_extractor=DoclingPdfExtractor(),
+            ).execute(book)
 
-        run.metrics.update({
-            "pages_total": len(document.pages),
-            "chunks_total": len(chunks),
-        })
+            chunks = ChunkBookUseCase(
+                chunk_repository=chunk_repository,
+                chunking_service=DoclingPdfChunker(
+                    tokenizer=create_embedding_tokenizer()
+                ),
+            ).execute(run.id, document)
+
+            run.metrics.update({
+                "pages_total": len(document.pages),
+                "chunks_total": len(chunks),
+            })
+
+        if not chunks:
+            raise RuntimeError(f"No chunks available for processing run {run.id}")
 
         run.current_stage = ProcessingRunStage.EMBEDDING
         processing_run_repository.update(run)
