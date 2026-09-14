@@ -15,6 +15,8 @@ from app.infrastructure.storage.s3_pdf_storage import S3PdfStorage
 # Celery task publisher dependency
 from app.infrastructure.tasks.celery_task_publisher import CeleryTaskPublisher
 from app.worker.celery_app import celery_app
+from app.infrastructure.repositories.reading_session_book_repository import SQLAlchemyReadingSessionBookRepository
+from app.infrastructure.repositories.reading_session_repository import SQLAlchemyReadingSessionRepository
 
 
 def get_db():
@@ -78,3 +80,12 @@ def get_pdf_storage() -> S3PdfStorage:
 
 def get_task_publisher() -> CeleryTaskPublisher:
     return CeleryTaskPublisher(celery_app)
+
+def get_reading_session_repository(db: Session = Depends(get_db)) -> SQLAlchemyReadingSessionRepository:
+    return SQLAlchemyReadingSessionRepository(db)
+
+
+def get_reading_session_book_repository(
+    db: Session = Depends(get_db),
+) -> SQLAlchemyReadingSessionBookRepository:
+    return SQLAlchemyReadingSessionBookRepository(db)
