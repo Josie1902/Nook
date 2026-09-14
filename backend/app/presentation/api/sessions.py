@@ -38,7 +38,7 @@ from app.presentation.api.schemas.session import (
 )
 from app.application.use_cases.retrieval.ask_question import AskQuestionUseCase
 from app.presentation.api.schemas.message import AskQuestionRequest, AskQuestionResponse, BoundingBoxResponse, ChunkProvenanceResponse, CitationResponse, RetrievalMatchResponse
-from backend.app.application.use_cases.session.confirm_research_selection import ConfirmResearchSelectionUseCase
+from app.application.use_cases.session.confirm_research_selection import ConfirmResearchSelectionUseCase
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
 
