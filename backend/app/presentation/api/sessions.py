@@ -39,6 +39,7 @@ from app.presentation.api.schemas.session import (
 from app.application.use_cases.retrieval.ask_question import AskQuestionUseCase
 from app.presentation.api.schemas.message import AskQuestionRequest, AskQuestionResponse, BoundingBoxResponse, ChunkProvenanceResponse, CitationResponse, RetrievalMatchResponse
 from app.application.use_cases.session.confirm_research_selection import ConfirmResearchSelectionUseCase
+from backend.app.application.use_cases.session.list_books_in_session import ListBooksInSessionUseCase
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
 
@@ -128,6 +129,37 @@ def remove_book_from_session(
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
 
+@router.get(
+    "/{session_id}/books",
+    response_model=list[SessionBookResponse],
+    status_code=status.HTTP_200_OK,
+)
+def list_books_in_session(
+    session_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    session_repository=Depends(get_reading_session_repository),
+    session_book_repository=Depends(get_reading_session_book_repository),
+):
+    use_case = ListBooksInSessionUseCase(
+        session_repository,
+        session_book_repository,
+    )
+
+    try:
+        books = use_case.execute(current_user.id, session_id)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+
+    return [
+        SessionBookResponse(
+            book_id=book.book_id,
+            added_at=book.added_at,
+        )
+        for book in books
+    ]
 
 @router.post("/{session_id}/research", response_model=ResearchSelectionResponse)
 def start_research(
