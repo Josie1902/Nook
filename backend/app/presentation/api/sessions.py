@@ -10,9 +10,11 @@ from app.application.use_cases.session.remove_book_from_session import RemoveBoo
 from app.application.use_cases.session.update_session import UpdateSessionUseCase
 from app.domain.entities.user import User
 from app.presentation.api.dependencies import (
+    get_answer_generator,
     get_book_repository,
     get_chunk_search_repository,
     get_current_user,
+    get_embedding_provider,
     get_message_repository,
     get_reading_session_book_repository,
     get_reading_session_repository,
@@ -26,8 +28,7 @@ from app.presentation.api.schemas.session import (
     SessionResponse,
 )
 from app.application.use_cases.retrieval.ask_question import AskQuestionUseCase
-from app.infrastructure.embedding.factory import create_embedding_provider
-from app.presentation.api.schemas.message import AskQuestionRequest, AskQuestionResponse, RetrievalMatchResponse
+from app.presentation.api.schemas.message import AskQuestionRequest, AskQuestionResponse, BoundingBoxResponse, ChunkProvenanceResponse, RetrievalMatchResponse
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
 
@@ -116,6 +117,7 @@ def remove_book_from_session(
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
 
+
 @router.post("/{session_id}/messages", response_model=AskQuestionResponse, status_code=status.HTTP_201_CREATED)
 def ask_question(
     session_id: uuid.UUID,
@@ -126,7 +128,8 @@ def ask_question(
     message_repository=Depends(get_message_repository),
     retrieval_repository=Depends(get_retrieval_repository),
     chunk_search_repository=Depends(get_chunk_search_repository),
-    embedding_provider=Depends(create_embedding_provider),
+    embedding_provider=Depends(get_embedding_provider),
+    answer_generator=Depends(get_answer_generator),
 ):
     use_case = AskQuestionUseCase(
         session_repository=session_repository,
@@ -135,6 +138,7 @@ def ask_question(
         retrieval_repository=retrieval_repository,
         chunk_search_repository=chunk_search_repository,
         embedding_provider=embedding_provider,
+        answer_generator=answer_generator,
     )
     try:
         result = use_case.execute(current_user.id, session_id, payload.content)
@@ -142,7 +146,9 @@ def ask_question(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
 
     return AskQuestionResponse(
-        message_id=result.message.id,
+        message_id=result.user_message.id,
+        assistant_message_id=result.assistant_message.id,
+        answer=result.assistant_message.content,
         retrieval_id=result.retrieval.id,
         query=result.retrieval.query,
         created_at=result.retrieval.created_at,
@@ -155,6 +161,22 @@ def ask_question(
                 page_end=m.page_end,
                 score=m.score,
                 rank=i,
+                provenance=[
+                    ChunkProvenanceResponse(
+                        chunk_id=p.chunk_id,
+                        page_number=p.page_number,
+                        bounding_boxes=[
+                            BoundingBoxResponse(
+                                left=b.left,
+                                top=b.top,
+                                right=b.right,
+                                bottom=b.bottom,
+                            )
+                            for b in p.bounding_boxes
+                        ],
+                    )
+                    for p in m.provenance
+                ],
             )
             for i, m in enumerate(result.matches)
         ],

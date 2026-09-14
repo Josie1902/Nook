@@ -28,6 +28,7 @@ class LLMConfig(BaseModel):
     ollama: OllamaConfig
 
     metadata: StageConfig
+    rag: StageConfig
 
 
 class HuggingFaceEmbeddingConfig(BaseModel):

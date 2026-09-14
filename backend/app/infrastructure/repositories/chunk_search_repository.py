@@ -38,6 +38,7 @@ class SQLAlchemyChunkSearchRepository(ChunkSearchRepository):
             select(
                 ChunkModel.id,
                 BookModel.id,
+                BookModel.title,
                 ChunkModel.content,
                 ChunkModel.page_start,
                 ChunkModel.page_end,
@@ -109,10 +110,11 @@ class SQLAlchemyChunkSearchRepository(ChunkSearchRepository):
             ChunkSearchMatch(
                 chunk_id=row[0],
                 book_id=row[1],
-                content=row[2],
-                page_start=row[3],
-                page_end=row[4],
-                score=1 - float(row[5]),
+                book_title=row[2],
+                content=row[3],
+                page_start=row[4],
+                page_end=row[5],
+                score=1 - float(row[6]),
                 provenance=tuple(provenance_by_chunk.get(row[0], [])),
             )
             for row in rows

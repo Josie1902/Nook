@@ -21,6 +21,11 @@ from app.infrastructure.repositories.chunk_search_repository import SQLAlchemyCh
 from app.infrastructure.repositories.message_repository import SQLAlchemyMessageRepository
 from app.infrastructure.repositories.retrieval_repository import SQLAlchemyRetrievalRepository
 
+# RAG
+from app.infrastructure.llm.factory import get_llm_client
+from app.infrastructure.llm.stages.answer_generator import LLMAnswerGenerator
+from app.infrastructure.embedding.factory import create_embedding_provider
+
 
 def get_db():
     db = SessionLocal()
@@ -104,3 +109,12 @@ def get_retrieval_repository(db: Session = Depends(get_db)) -> SQLAlchemyRetriev
 
 def get_chunk_search_repository(db: Session = Depends(get_db)) -> SQLAlchemyChunkSearchRepository:
     return SQLAlchemyChunkSearchRepository(db)
+
+def get_embedding_provider():
+    return create_embedding_provider()
+
+def get_answer_generator():
+    return LLMAnswerGenerator(
+        get_llm_client(),
+        settings.LLM.rag,
+    )
