@@ -17,6 +17,9 @@ from app.infrastructure.tasks.celery_task_publisher import CeleryTaskPublisher
 from app.worker.celery_app import celery_app
 from app.infrastructure.repositories.reading_session_book_repository import SQLAlchemyReadingSessionBookRepository
 from app.infrastructure.repositories.reading_session_repository import SQLAlchemyReadingSessionRepository
+from app.infrastructure.repositories.chunk_search_repository import SQLAlchemyChunkSearchRepository
+from app.infrastructure.repositories.message_repository import SQLAlchemyMessageRepository
+from app.infrastructure.repositories.retrieval_repository import SQLAlchemyRetrievalRepository
 
 
 def get_db():
@@ -89,3 +92,15 @@ def get_reading_session_book_repository(
     db: Session = Depends(get_db),
 ) -> SQLAlchemyReadingSessionBookRepository:
     return SQLAlchemyReadingSessionBookRepository(db)
+
+
+def get_message_repository(db: Session = Depends(get_db)) -> SQLAlchemyMessageRepository:
+    return SQLAlchemyMessageRepository(db)
+
+
+def get_retrieval_repository(db: Session = Depends(get_db)) -> SQLAlchemyRetrievalRepository:
+    return SQLAlchemyRetrievalRepository(db)
+
+
+def get_chunk_search_repository(db: Session = Depends(get_db)) -> SQLAlchemyChunkSearchRepository:
+    return SQLAlchemyChunkSearchRepository(db)

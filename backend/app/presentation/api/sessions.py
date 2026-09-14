@@ -11,9 +11,12 @@ from app.application.use_cases.session.update_session import UpdateSessionUseCas
 from app.domain.entities.user import User
 from app.presentation.api.dependencies import (
     get_book_repository,
+    get_chunk_search_repository,
     get_current_user,
+    get_message_repository,
     get_reading_session_book_repository,
     get_reading_session_repository,
+    get_retrieval_repository,
 )
 from app.presentation.api.schemas.session import (
     AddBookRequest,
@@ -22,6 +25,9 @@ from app.presentation.api.schemas.session import (
     SessionDetailResponse,
     SessionResponse,
 )
+from app.application.use_cases.retrieval.ask_question import AskQuestionUseCase
+from app.infrastructure.embedding.factory import create_embedding_provider
+from app.presentation.api.schemas.message import AskQuestionRequest, AskQuestionResponse, RetrievalMatchResponse
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
 
@@ -109,3 +115,47 @@ def remove_book_from_session(
         use_case.execute(current_user.id, session_id, book_id)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+
+@router.post("/{session_id}/messages", response_model=AskQuestionResponse, status_code=status.HTTP_201_CREATED)
+def ask_question(
+    session_id: uuid.UUID,
+    payload: AskQuestionRequest,
+    current_user: User = Depends(get_current_user),
+    session_repository=Depends(get_reading_session_repository),
+    session_book_repository=Depends(get_reading_session_book_repository),
+    message_repository=Depends(get_message_repository),
+    retrieval_repository=Depends(get_retrieval_repository),
+    chunk_search_repository=Depends(get_chunk_search_repository),
+    embedding_provider=Depends(create_embedding_provider),
+):
+    use_case = AskQuestionUseCase(
+        session_repository=session_repository,
+        session_book_repository=session_book_repository,
+        message_repository=message_repository,
+        retrieval_repository=retrieval_repository,
+        chunk_search_repository=chunk_search_repository,
+        embedding_provider=embedding_provider,
+    )
+    try:
+        result = use_case.execute(current_user.id, session_id, payload.content)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+
+    return AskQuestionResponse(
+        message_id=result.message.id,
+        retrieval_id=result.retrieval.id,
+        query=result.retrieval.query,
+        created_at=result.retrieval.created_at,
+        results=[
+            RetrievalMatchResponse(
+                chunk_id=m.chunk_id,
+                book_id=m.book_id,
+                content=m.content,
+                page_start=m.page_start,
+                page_end=m.page_end,
+                score=m.score,
+                rank=i,
+            )
+            for i, m in enumerate(result.matches)
+        ],
+    )
