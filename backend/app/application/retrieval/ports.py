@@ -10,12 +10,12 @@ class ChunkSearchMatch:
     chunk_id: uuid.UUID
     book_id: uuid.UUID
     book_title: str
+    book_author: str
     content: str
     page_start: int
     page_end: int
     score: float
-    provenance: tuple[ChunkProvenance, ...]
-    
+    provenance: tuple[ChunkProvenance, ...] = ()
 
 
 class ChunkSearchRepository(ABC):

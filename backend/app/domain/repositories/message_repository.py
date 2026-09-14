@@ -12,3 +12,7 @@ class MessageRepository(ABC):
     @abstractmethod
     def get_next_sequence_number(self, session_id: uuid.UUID) -> int:
         ...
+
+    @abstractmethod
+    def list_by_session(self, session_id: uuid.UUID) -> list[Message]:
+        ...

@@ -43,5 +43,26 @@ class SQLAlchemyMessageRepository(MessageRepository):
             .order_by(MessageModel.sequence_number.desc())
             .first()
         )
-    
+
         return (last_sequence[0] + 1) if last_sequence else 1
+
+    def list_by_session(self, session_id: uuid.UUID) -> list[Message]:
+        models = (
+            self.session.query(MessageModel)
+            .filter(MessageModel.session_id == session_id)
+            .order_by(MessageModel.sequence_number.asc())
+            .all()
+        )
+
+        return [
+            Message(
+                id=model.id,
+                session_id=model.session_id,
+                sequence_number=model.sequence_number,
+                role=MessageRole(model.role),
+                content=model.content,
+                error_message=model.error_message,
+                created_at=model.created_at,
+            )
+            for model in models
+        ]

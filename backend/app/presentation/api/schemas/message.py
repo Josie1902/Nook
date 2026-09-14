@@ -33,6 +33,15 @@ class RetrievalMatchResponse(BaseModel):
     provenance: list[ChunkProvenanceResponse]
 
 
+class CitationResponse(BaseModel):
+    id: uuid.UUID
+    book_title: str
+    book_author: str
+    page_start: int
+    page_end: int
+    quote: str
+
+
 class AskQuestionResponse(BaseModel):
     message_id: uuid.UUID
     assistant_message_id: uuid.UUID
@@ -41,3 +50,4 @@ class AskQuestionResponse(BaseModel):
     query: str
     created_at: datetime
     results: list[RetrievalMatchResponse]
+    citations: list[CitationResponse]

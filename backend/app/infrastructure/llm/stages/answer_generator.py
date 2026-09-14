@@ -1,30 +1,34 @@
+import uuid
+
 from pydantic import BaseModel, Field
 
 from app.application.generation.ports import (
     AnswerGenerator,
+    AnswerSegment,
     ContextChunk,
     GeneratedAnswer,
+    GeneratedCitation,
 )
 from app.core.settings import StageConfig
 from app.infrastructure.llm.providers.base import BaseLLMClient
 from app.infrastructure.llm.schemas import LLMMessage
 
 
-class GeneratedAnswerResponse(BaseModel):
-    """Schema for the LLM's structured response — validated before we trust it."""
+class GeneratedCitationResponse(BaseModel):
+    chunk_id: str
+    quote: str
 
-    answer: str = Field(...)
-    source_chunk_ids: list[str] = Field(default_factory=list)
+
+class AnswerSegmentResponse(BaseModel):
+    text: str
+    citation: GeneratedCitationResponse | None = None
+
+
+class GeneratedAnswerResponse(BaseModel):
+    segments: list[AnswerSegmentResponse] = Field(default_factory=list)
 
 
 class LLMAnswerGenerator(AnswerGenerator):
-    """
-    Provider-agnostic answer generator.
-
-    Works against whichever BaseLLMClient it is given.
-    Provider selection lives in config/factory.
-    """
-
     def __init__(
         self,
         llm_client: BaseLLMClient,
@@ -38,11 +42,12 @@ class LLMAnswerGenerator(AnswerGenerator):
         question: str,
         context_chunks: list[ContextChunk],
     ) -> GeneratedAnswer:
+
         context = "\n\n".join(
             (
-                f"[Source: {chunk.chunk_id}]\n"
+                f"[Source Chunk ID: {chunk.chunk_id}]\n"
                 f"Book: {chunk.book_title}\n"
-                f"{chunk.content}"
+                f"Content:\n{chunk.content}"
             )
             for chunk in context_chunks
         )
@@ -52,35 +57,31 @@ class LLMAnswerGenerator(AnswerGenerator):
                 role="user",
                 content=(
                     "Answer the question using only the provided book evidence.\n\n"
-                    "Return a JSON object with exactly these fields:\n"
-                    "- answer: string\n"
-                    "- source_chunk_ids: list of source chunk IDs\n\n"
+
+                    "Return a JSON object containing a list of answer segments.\n"
+                    "Each segment contains:\n"
+                    "- text: a piece of the answer\n"
+                    "- citation: the source evidence supporting that text, or null\n"
+                    "  if the segment does not require a citation\n\n"
 
                     "Citation rules:\n"
-                    "- Every factual claim in the answer must be supported by the provided evidence.\n"
-                    "- Cite supporting evidence inline immediately after the relevant claim.\n"
-                    "- Citations must use exactly this format: (Book Title, p. N)\n"
-                    "- For evidence spanning multiple pages, use: (Book Title, pp. N-M)\n"
-                    "- Use the exact book title provided in the evidence.\n"
-                    "- Use the page number or page range provided by the source chunk.\n"
-                    "- Do not invent, modify, abbreviate, or guess book titles or page numbers.\n"
-                    "- If multiple sources support the same claim, include multiple citations, "
-                    "for example: (Book A, p. 10) (Book B, p. 25).\n"
-                    "- Place citations directly after the claim they support.\n"
-                    "- Do not add a separate Sources or References section.\n\n"
+                    "- Every factual claim must have a supporting citation.\n"
+                    "- citation.chunk_id must be exactly one of the provided source "
+                    "chunk IDs.\n"
+                    "- citation.quote must be an exact quote from that source chunk.\n"
+                    "- Do not invent or modify quotes.\n"
+                    "- Keep the quote short and directly relevant to the claim.\n"
+                    "- Do not cite irrelevant chunks.\n\n"
 
                     "Answering rules:\n"
-                    "- Use only information explicitly supported by the provided book evidence.\n"
+                    "- Use only information explicitly supported by the provided "
+                    "book evidence.\n"
                     "- Do not use outside knowledge.\n"
                     "- Do not make assumptions beyond the evidence.\n"
-                    "- If the evidence is insufficient to answer the question, say exactly: "
-                    "\"There is not enough information in the provided books.\"\n"
-                    "- Do not guess or fill gaps using outside knowledge.\n"
-                    "- source_chunk_ids must contain only IDs from the provided evidence.\n"
-                    "- Include every source chunk that materially supports the answer.\n"
-                    "- Do not include irrelevant source chunk IDs.\n"
-                    "- The book title itself is not evidence; the answer must be supported by "
-                    "the content of the source chunks.\n\n"
+                    "- If the evidence is insufficient, return exactly one segment "
+                    "with this text: "
+                    "\"There is not enough information in the provided books.\" "
+                    "and set citation to null.\n\n"
 
                     f"Question:\n{question}\n\n"
                     f"Book evidence:\n{context}"
@@ -95,6 +96,18 @@ class LLMAnswerGenerator(AnswerGenerator):
         )
 
         return GeneratedAnswer(
-            content=result.answer,
-            source_chunk_ids=result.source_chunk_ids,
+            segments=[
+                AnswerSegment(
+                    text=segment.text,
+                    citation=(
+                        GeneratedCitation(
+                            chunk_id=uuid.UUID(segment.citation.chunk_id),
+                            quote=segment.citation.quote,
+                        )
+                        if segment.citation
+                        else None
+                    ),
+                )
+                for segment in result.segments
+            ]
         )
