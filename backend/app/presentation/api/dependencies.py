@@ -24,7 +24,10 @@ from app.infrastructure.repositories.retrieval_repository import SQLAlchemyRetri
 # RAG
 from app.infrastructure.llm.factory import get_llm_client
 from app.infrastructure.llm.stages.answer_generator import LLMAnswerGenerator
+from app.infrastructure.llm.stages.book_recommender import LLMBookRecommender
+from app.infrastructure.llm.stages.research_generator import LLMResearchGenerator
 from app.infrastructure.embedding.factory import create_embedding_provider
+from app.infrastructure.repositories.citation_repository import SQLAlchemyCitationRepository
 
 
 def get_db():
@@ -118,3 +121,21 @@ def get_answer_generator():
         get_llm_client(),
         settings.LLM.rag,
     )
+
+
+def get_book_recommender():
+    return LLMBookRecommender(
+        get_llm_client(),
+        settings.LLM.rag,
+    )
+
+
+def get_research_generator():
+    return LLMResearchGenerator(
+        get_llm_client(),
+        settings.LLM.rag,
+    )
+
+
+def get_citation_repository(db: Session = Depends(get_db)) -> SQLAlchemyCitationRepository:
+    return SQLAlchemyCitationRepository(db)
