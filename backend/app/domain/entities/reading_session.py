@@ -12,12 +12,16 @@ class SessionMode(str, Enum):
 class ReadingSession:
     user_id: str
     topic: str = "Untitled"
+    description: str | None = None
     mode: SessionMode = SessionMode.RESEARCH
     id: uuid.UUID = field(default_factory=uuid.uuid4)
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
     def update_topic(self, topic: str) -> None:
         self.topic = topic
+
+    def update_description(self, description: str | None) -> None:
+        self.description = description
 
     def chat_mode(self) -> None:
         self.mode = SessionMode.CHAT

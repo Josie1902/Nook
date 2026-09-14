@@ -13,6 +13,7 @@ def _to_entity(model: ReadingSessionModel) -> ReadingSession:
         id=model.id,
         user_id=model.user_id,
         topic=model.topic,
+        description=model.description,
         mode=SessionMode(model.mode),
         created_at=model.created_at,
     )
@@ -27,6 +28,7 @@ class SQLAlchemyReadingSessionRepository(ReadingSessionRepository):
             id=session.id,
             user_id=session.user_id,
             topic=session.topic,
+            description=session.description,
             mode=session.mode,
             created_at=session.created_at,
         )
@@ -36,16 +38,17 @@ class SQLAlchemyReadingSessionRepository(ReadingSessionRepository):
         return _to_entity(model)
 
     def update(self, session: ReadingSession) -> ReadingSession:
-            model = self.session.get(ReadingSessionModel, session.id)
-            if model is None:
-                raise ValueError("ReadingSession not found")
-    
-            model.topic=session.topic
-            model.mode=session.mode
-    
-            self.session.commit()
-            self.session.refresh(model)
-            return _to_entity(model)
+        model = self.session.get(ReadingSessionModel, session.id)
+        if model is None:
+            raise ValueError("ReadingSession not found")
+
+        model.topic = session.topic
+        model.description = session.description
+        model.mode = session.mode
+
+        self.session.commit()
+        self.session.refresh(model)
+        return _to_entity(model)
 
     def get_by_id(self, session_id: uuid.UUID) -> Optional[ReadingSession]:
         model = self.session.get(ReadingSessionModel, session_id)
