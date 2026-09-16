@@ -2,7 +2,7 @@ import uuid
 from abc import ABC, abstractmethod
 from typing import List, Optional
 
-from app.domain.entities.reading_session_book import ReadingSessionBook
+from app.domain.entities.reading_session_book import ReadingSessionBook, SessionBookDetails
 
 
 class ReadingSessionBookRepository(ABC):
@@ -17,7 +17,7 @@ class ReadingSessionBookRepository(ABC):
         ...
 
     @abstractmethod
-    def list_by_session(self, session_id: uuid.UUID) -> List[ReadingSessionBook]:
+    def list_by_session(self, session_id: uuid.UUID) -> List[SessionBookDetails]:
         ...
 
     @abstractmethod

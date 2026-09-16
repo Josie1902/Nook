@@ -32,6 +32,7 @@ from app.presentation.api.schemas.session import (
     ResearchRequest,
     ResearchSelectionBookResponse,
     ResearchSelectionResponse,
+    SessionBookDetailResponse,
     SessionBookResponse,
     SessionDetailResponse,
     SessionResponse,
@@ -61,7 +62,7 @@ def create_session(
     session = use_case.execute(current_user.id)
     return SessionResponse(id=session.id, topic=session.topic, created_at=session.created_at, mode=SessionMode.RESEARCH)
 
-@router.put("", response_model=SessionResponse)
+@router.patch("", response_model=SessionResponse)
 def update_session(
     payload: UpdateSessionRequest,
     current_user: User = Depends(get_current_user),
@@ -131,7 +132,7 @@ def remove_book_from_session(
 
 @router.get(
     "/{session_id}/books",
-    response_model=list[SessionBookResponse],
+    response_model=list[SessionBookDetailResponse],
     status_code=status.HTTP_200_OK,
 )
 def list_books_in_session(
@@ -154,9 +155,12 @@ def list_books_in_session(
         )
 
     return [
-        SessionBookResponse(
+        SessionBookDetailResponse(
             book_id=book.book_id,
             added_at=book.added_at,
+            title=book.title,
+            author=book.author,
+            cover_url=book.cover_url,
         )
         for book in books
     ]

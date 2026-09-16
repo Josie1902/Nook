@@ -1,6 +1,6 @@
 import uuid
 
-from app.domain.entities.reading_session_book import ReadingSessionBook
+from app.domain.entities.reading_session_book import SessionBookDetails
 from app.domain.repositories.reading_session_book_repository import (
     ReadingSessionBookRepository,
 )
@@ -22,7 +22,7 @@ class ListBooksInSessionUseCase:
         self,
         user_id: str,
         session_id: uuid.UUID,
-    ) -> list[ReadingSessionBook]:
+    ) -> list[SessionBookDetails]:
         session = self.session_repository.get_by_id(session_id)
 
         if session is None or session.user_id != user_id:

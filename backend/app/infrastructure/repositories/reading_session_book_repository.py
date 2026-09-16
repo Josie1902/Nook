@@ -3,11 +3,12 @@ from typing import List, Optional
 
 from sqlalchemy.orm import Session
 
-from app.domain.entities.reading_session_book import ReadingSessionBook
+from app.domain.entities.reading_session_book import ReadingSessionBook, SessionBookDetails
 from app.domain.repositories.reading_session_book_repository import (
     ReadingSessionBookRepository,
 )
 from app.infrastructure.db.models.reading_session_book import ReadingSessionBookModel
+from app.infrastructure.db.models.book import BookModel
 
 
 def _to_entity(model: ReadingSessionBookModel) -> ReadingSessionBook:
@@ -54,17 +55,33 @@ class SQLAlchemyReadingSessionBookRepository(ReadingSessionBookRepository):
     def list_by_session(
         self,
         session_id: uuid.UUID,
-    ) -> List[ReadingSessionBook]:
-        models = (
-            self.session.query(ReadingSessionBookModel)
+    ) -> list[SessionBookDetails]:
+        rows = (
+            self.session.query(
+                ReadingSessionBookModel,
+                BookModel,
+            )
+            .join(
+                BookModel,
+                BookModel.id == ReadingSessionBookModel.book_id,
+            )
             .filter(
                 ReadingSessionBookModel.session_id == session_id,
             )
             .order_by(ReadingSessionBookModel.added_at)
             .all()
         )
-
-        return [_to_entity(model) for model in models]
+    
+        return [
+            SessionBookDetails(
+                book_id=session_book.id,
+                added_at=session_book.added_at,
+                title=book.title,
+                author=book.author,
+                cover_url=book.cover_url,
+            )
+            for session_book, book in rows
+        ]
 
     def delete_book_in_session(
         self,

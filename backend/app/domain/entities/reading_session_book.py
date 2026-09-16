@@ -8,3 +8,11 @@ class ReadingSessionBook:
     session_id: uuid.UUID
     book_id: uuid.UUID
     added_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+
+@dataclass
+class SessionBookDetails:
+    book_id: uuid.UUID
+    added_at: datetime
+    title: str
+    author: str
+    cover_url: str | None

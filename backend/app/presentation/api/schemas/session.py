@@ -24,6 +24,12 @@ class SessionBookResponse(BaseModel):
     book_id: uuid.UUID
     added_at: datetime
 
+class SessionBookDetailResponse(BaseModel):
+    book_id: uuid.UUID
+    added_at: datetime
+    title: str
+    author: str 
+    cover_url: str | None
 
 class ResearchSelectionBookResponse(BaseModel):
     book_id: uuid.UUID
