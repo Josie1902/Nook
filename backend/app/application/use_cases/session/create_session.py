@@ -4,7 +4,7 @@ from app.domain.repositories.message_repository import MessageRepository
 from app.domain.repositories.reading_session_repository import ReadingSessionRepository
 
 DEFAULT_RESEARCH_MESSAGE = (
-    "What would you like to research or learn about? Tell me what you're interested in, and I'll help refine the topic and find the most relevant books from your library."
+    "Curious about something? Start by asking a few questions below."
 )
 
 
@@ -26,7 +26,10 @@ class CreateSessionUseCase:
                 Message(
                     session_id=session.id,
                     sequence_number=self.message_repository.get_next_sequence_number(session.id),
-                    content={"text": DEFAULT_RESEARCH_MESSAGE},
+                    content={"segments": [{
+                        "text": DEFAULT_RESEARCH_MESSAGE,
+                        "citation_ids": []
+                    }], "citations": []},
                     role=MessageRole.ASSISTANT,
                 )
             )

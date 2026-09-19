@@ -1,6 +1,5 @@
 import uuid
-from dataclasses import asdict, dataclass
-from typing import List
+from dataclasses import dataclass
 
 from app.application.embedding.ports import EmbeddingProvider
 from app.application.generation.ports import (
@@ -12,7 +11,11 @@ from app.application.retrieval.ports import (
     ChunkSearchMatch,
     ChunkSearchRepository,
 )
-from app.domain.entities.citation import Citation
+from app.domain.entities.citation import (
+    Citation,
+    CitationBoundingBox,
+    CitationLocation,
+)
 from app.domain.entities.message import Message, MessageRole
 from app.domain.entities.retrieval import Retrieval
 from app.domain.entities.retrieval_result import RetrievalResult
@@ -27,7 +30,7 @@ from app.domain.repositories.reading_session_repository import (
 from app.domain.repositories.retrieval_repository import RetrievalRepository
 
 
-DEFAULT_TOP_K = 5
+DEFAULT_TOP_K = 8
 
 
 class AnswerGenerationError(Exception):
@@ -38,9 +41,7 @@ class AnswerGenerationError(Exception):
 class AskQuestionResult:
     user_message: Message
     assistant_message: Message
-    retrieval: Retrieval
-    matches: List[ChunkSearchMatch]
-    citations: List[Citation]
+    citations: list[Citation]
 
 
 class AskQuestionUseCase:
@@ -72,13 +73,13 @@ class AskQuestionUseCase:
         session_id: uuid.UUID,
         content: str,
     ) -> AskQuestionResult:
-        # Step 1: Make sure the session exists and belongs to the current user.
+        # 1. Validate the session.
         session = self.session_repository.get_by_id(session_id)
 
         if session is None or session.user_id != user_id:
             raise ValueError("Session not found")
 
-        # Step 2: Get the books that belong to this reading session.
+        # 2. Get the books belonging to this session.
         book_ids = [
             link.book_id
             for link in self.session_book_repository.list_by_session(
@@ -86,8 +87,7 @@ class AskQuestionUseCase:
             )
         ]
 
-        # Step 3: Persist the user's question before doing retrieval or
-        # generation so the interaction has a durable message ID.
+        # 3. Persist the user's question.
         user_message = self.message_repository.add(
             Message(
                 session_id=session_id,
@@ -99,17 +99,17 @@ class AskQuestionUseCase:
             )
         )
 
-        # Step 4: Convert the user's question into an embedding.
+        # 4. Embed the user's question.
         query_embedding = self.embedding_provider.embed([content])[0]
 
-        # Step 5: Search only chunks belonging to books in this session.
+        # 5. Search only chunks belonging to books in this session.
         matches = self.chunk_search_repository.search(
             book_ids=book_ids,
             query_embedding=query_embedding,
             top_k=self.top_k,
         )
 
-        # Step 6: Persist the retrieval itself.
+        # 6. Persist retrieval information.
         retrieval = self.retrieval_repository.add(
             Retrieval(
                 message_id=user_message.id,
@@ -121,8 +121,6 @@ class AskQuestionUseCase:
             )
         )
 
-        # Step 7: Persist the individual retrieval results so we know
-        # which chunks were retrieved and how they ranked.
         if matches:
             self.retrieval_repository.add_results(
                 [
@@ -136,8 +134,7 @@ class AskQuestionUseCase:
                 ]
             )
 
-        # Step 8: Convert retrieval matches into the context format expected
-        # by the answer generator.
+        # 7. Convert retrieved chunks into generation context.
         context_chunks = [
             ContextChunk(
                 chunk_id=match.chunk_id,
@@ -149,17 +146,13 @@ class AskQuestionUseCase:
             for match in matches
         ]
 
-        # Step 9: Ask the LLM to generate the answer using the retrieved
-        # chunks as context.
+        # 8. Generate the answer.
         try:
             generated_answer = self.answer_generator.generate(
                 content,
                 context_chunks,
             )
-
         except Exception as exc:
-            # The LLM failed. Persist the failed assistant message so the
-            # interaction is not lost, then expose an application-level error.
             self.message_repository.add(
                 Message(
                     session_id=session_id,
@@ -174,40 +167,42 @@ class AskQuestionUseCase:
 
             raise AnswerGenerationError(str(exc)) from exc
 
-        # Step 10: Persist the successful assistant answer.
-        assistant_message = self.message_repository.add(
-            Message(
-                session_id=session_id,
-                sequence_number=self.message_repository.get_next_sequence_number(
-                    session_id
-                ),
-                content={
-                    "segments": [
-                        asdict(segment)
-                        for segment in generated_answer.segments
-                    ]
-                },
-                role=MessageRole.ASSISTANT,
-            )
+        # 9. Generate the assistant message ID before creating citations.
+        assistant_message_id = uuid.uuid4()
+
+        # 10. Create immutable citation snapshots.
+        citations = self._create_citations(
+            assistant_message_id=assistant_message_id,
+            generated_answer=generated_answer,
+            matches=matches,
         )
 
-        # Step 11: Turn the citations selected by the LLM into domain
-        # Citation entities. The citation belongs to the assistant message,
-        # not the user's question.
-        citations = self.citation_repository.add_many(
-            self._create_citations(
-                assistant_message_id=assistant_message.id,
-                generated_answer=generated_answer,
-                matches=matches,
-            )
+        # 11. Build the assistant message.
+        #
+        # Only citation IDs are stored in the message.
+        # Full citation data lives in the Citation table.
+        assistant_message = Message(
+            id=assistant_message_id,
+            session_id=session_id,
+            sequence_number=self.message_repository.get_next_sequence_number(
+                session_id
+            ),
+            content={
+                "segments": self._build_segments(
+                    generated_answer=generated_answer,
+                    citations=citations,
+                )
+            },
+            role=MessageRole.ASSISTANT,
         )
 
-        # Step 12: Return everything the application layer need.
+        # 12. Persist the assistant message and citations.
+        self.message_repository.add(assistant_message)
+        self.citation_repository.add_many(citations)
+
         return AskQuestionResult(
             user_message=user_message,
             assistant_message=assistant_message,
-            retrieval=retrieval,
-            matches=matches,
             citations=citations,
         )
 
@@ -215,47 +210,48 @@ class AskQuestionUseCase:
         self,
         assistant_message_id: uuid.UUID,
         generated_answer: GeneratedAnswer,
-        matches: List[ChunkSearchMatch],
-    ) -> List[Citation]:
-        # Build a lookup so we can resolve the chunk referenced by the
-        # generated citation without repeatedly scanning the matches.
+        matches: list[ChunkSearchMatch],
+    ) -> list[Citation]:
         matches_by_chunk_id = {
             match.chunk_id: match
             for match in matches
         }
 
-        citations: List[Citation] = []
+        citations: list[Citation] = []
 
-        # Preserve the order of the generated answer segments.
-        # This order is used to display citations consistently.
         for order, segment in enumerate(
             generated_answer.segments,
             start=1,
         ):
-            # Some answer segments may not contain a citation.
             if segment.citation is None:
                 continue
 
-            # The LLM gives us a chunk_id. Resolve it against the chunks
-            # that were actually retrieved for this question.
             match = matches_by_chunk_id.get(
                 segment.citation.chunk_id
             )
 
-            # Never allow the LLM to create a citation pointing to a chunk
-            # that was not actually retrieved.
             if match is None:
                 raise AnswerGenerationError(
-                    f"Generated citation references unknown chunk "
+                    "Generated citation references unknown chunk "
                     f"{segment.citation.chunk_id}"
                 )
 
-            # Create the immutable citation snapshot.
-            #
-            # book_title and author are copied from the retrieval match so
-            # future changes to Book metadata do not change this citation.
-            #
-            # book_id and chunk_id preserve the provenance relationship.
+            locations = [
+                CitationLocation(
+                    page=provenance.page_number,
+                    bounding_boxes=[
+                        CitationBoundingBox(
+                            left=box.left,
+                            top=box.top,
+                            right=box.right,
+                            bottom=box.bottom,
+                        )
+                        for box in provenance.bounding_boxes
+                    ],
+                )
+                for provenance in match.provenance
+            ]
+
             citations.append(
                 Citation(
                     message_id=assistant_message_id,
@@ -266,8 +262,40 @@ class AskQuestionUseCase:
                     page_start=match.page_start,
                     page_end=match.page_end,
                     quote=segment.citation.quote,
+                    locations=locations,
                     order=order,
                 )
             )
 
         return citations
+
+    @staticmethod
+    def _build_segments(
+        generated_answer: GeneratedAnswer,
+        citations: list[Citation],
+    ) -> list[dict]:
+        citations_by_order = {
+            citation.order: citation
+            for citation in citations
+        }
+
+        segments: list[dict] = []
+
+        for order, segment in enumerate(
+            generated_answer.segments,
+            start=1,
+        ):
+            citation = citations_by_order.get(order)
+
+            segments.append(
+                {
+                    "text": segment.text,
+                    "citation_ids": (
+                        [str(citation.id)]
+                        if citation is not None
+                        else []
+                    ),
+                }
+            )
+
+        return segments

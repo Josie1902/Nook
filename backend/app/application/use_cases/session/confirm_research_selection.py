@@ -130,8 +130,4 @@ class ConfirmResearchSelectionUseCase:
                     key=lambda item: str(item),
                 )
             ],
-            "selected_book_ids": sorted(
-                selected,
-                key=lambda item: str(item),
-            ),
         }

@@ -9,7 +9,6 @@ from app.application.generation.ports import (
 from app.domain.entities.message import Message, MessageRole
 from app.domain.entities.reading_session import ReadingSession, SessionMode
 from app.domain.repositories.book_repository import BookRepository
-from app.domain.repositories.message_repository import MessageRepository
 from app.domain.repositories.reading_session_book_repository import ReadingSessionBookRepository
 from app.domain.repositories.reading_session_repository import ReadingSessionRepository
 
@@ -18,14 +17,12 @@ class ResearchSessionUseCase:
     def __init__(
         self,
         session_repository: ReadingSessionRepository,
-        message_repository: MessageRepository | None,
         book_repository: BookRepository,
         session_book_repository: ReadingSessionBookRepository,
         recommender: BookRecommender,
         research_generator: ResearchGenerator,
     ):
         self.session_repository = session_repository
-        self.message_repository = message_repository
         self.book_repository = book_repository
         self.session_book_repository = session_book_repository
         self.recommender = recommender
@@ -150,18 +147,6 @@ class ResearchSessionUseCase:
 
         if not cleaned:
             raise ValueError("Research request is required")
-
-        if self.message_repository is not None:
-            self.message_repository.add(
-                Message(
-                    session_id=session_id,
-                    sequence_number=self.message_repository.get_next_sequence_number(
-                        session_id
-                    ),
-                    content={"text": cleaned},
-                    role=MessageRole.USER,
-                )
-            )
 
         research = self.research_generator.generate(cleaned)
 
