@@ -79,6 +79,7 @@ def fail_processing(
 def _pdf_storage() -> S3PdfStorage:
     return S3PdfStorage(
         endpoint_url=settings.S3_ENDPOINT_URL,
+        public_endpoint_url=settings.S3_PUBLIC_ENDPOINT_URL,
         access_key=settings.S3_ACCESS_KEY,
         secret_key=settings.S3_SECRET_KEY,
         bucket=settings.S3_BUCKET,
