@@ -1,5 +1,5 @@
 import { api } from "./client";
-import type { Book, BookMetadata, BookMetadataUpdate, ProcessingRun } from "./types";
+import type { Book, BookMetadata, BookMetadataUpdate, PresignedUrlResponse, ProcessingRun } from "./types";
 
 export function getBooks(): Promise<Book[]> {
   return api.get<Book[]>("/books");
@@ -37,4 +37,8 @@ export function getBookProcessing(bookId: string): Promise<ProcessingRun> {
 
 export function retryBookProcessing(bookId: string): Promise<ProcessingRun> {
   return api.post<ProcessingRun>(`/books/${encodeURIComponent(bookId)}/retry`);
+}
+
+export function getPresignedUrl(bookId: string): Promise<PresignedUrlResponse> {
+  return api.get<PresignedUrlResponse>(`/books/${encodeURIComponent(bookId)}/presigned-url`);
 }

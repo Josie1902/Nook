@@ -28,6 +28,7 @@ class LLMConfig(BaseModel):
     ollama: OllamaConfig
 
     metadata: StageConfig
+    rag: StageConfig
 
 
 class HuggingFaceEmbeddingConfig(BaseModel):
@@ -74,6 +75,7 @@ class Settings(BaseSettings):
     POSTGRES_PASSWORD: str
 
     S3_ENDPOINT_URL: str
+    S3_PUBLIC_ENDPOINT_URL: str
     S3_ACCESS_KEY: str
     S3_SECRET_KEY: str
     S3_BUCKET: str

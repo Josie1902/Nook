@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.presentation.api.health import router as health_router
 from app.presentation.api.books import router as books_router
 from app.presentation.api.users import router as user_router
+from app.presentation.api.sessions import router as sessions_router
 
 from app.application.exceptions.base import ApplicationError
 from app.infrastructure.pdf.exceptions import PDFError
@@ -34,6 +35,7 @@ app.add_middleware(
 app.include_router(health_router)
 app.include_router(user_router)
 app.include_router(books_router)
+app.include_router(sessions_router)
 
 # ─────────────────────────────
 # Application Error Handlers
