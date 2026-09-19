@@ -74,7 +74,7 @@ class SQLAlchemyReadingSessionBookRepository(ReadingSessionBookRepository):
     
         return [
             SessionBookDetails(
-                book_id=session_book.id,
+                book_id=session_book.book_id,
                 added_at=session_book.added_at,
                 title=book.title,
                 author=book.author,

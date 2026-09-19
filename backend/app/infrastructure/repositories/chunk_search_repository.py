@@ -53,7 +53,7 @@ class SQLAlchemyChunkSearchRepository(ChunkSearchRepository):
             )
             .join(
                 BookModel,
-                BookModel.active_processing_run_id == ProcessingRunModel.id,
+                BookModel.id == ProcessingRunModel.book_id,
             )
             .where(BookModel.id.in_(book_ids))
             .order_by(distance)
