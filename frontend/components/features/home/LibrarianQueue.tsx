@@ -8,11 +8,12 @@ import {
   getIncompleteProcessingBooks,
 } from "@/lib/api/books";
 import { Book } from "@/lib/api/types";
-
+import { useBookStore } from "@/stores/book-store";
 import { ProcessingBookCard } from "./ProcessingBookCard";
 
 export function LibrarianQueue() {
   const [processingBooks, setProcessingBooks] = useState<Book[]>([]);
+  const updateBook = useBookStore((state) => state.updateBook);
 
   useEffect(() => {
     let isCancelled = false;
@@ -22,6 +23,7 @@ export function LibrarianQueue() {
     const loadProcessingBooks = async () => {
       try {
         const books = await getIncompleteProcessingBooks();
+        
 
         if (isCancelled) {
           return;
@@ -38,7 +40,7 @@ export function LibrarianQueue() {
             try {
               const processing = await getBookProcessing(book.id);
 
-              return {
+              const updatedBook = {
                 ...book,
                 processing_status: processing.status,
                 processing_stage: processing.stage,
@@ -51,6 +53,11 @@ export function LibrarianQueue() {
                     }
                   : null,
               };
+              if (!isCancelled) {
+                updateBook(updatedBook);
+              }
+            
+              return updatedBook;
             } catch {
               // Keep the book data from the queue endpoint if the
               // individual processing request fails.
