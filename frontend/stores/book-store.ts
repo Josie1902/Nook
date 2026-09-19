@@ -6,12 +6,11 @@ import {
 } from "@/lib/api/books";
 import { getBookColor } from "@/lib/books";
 import type { Book } from "@/types/book";
+import { useAppErrorStore } from "./app-error-store";
 
 interface BookState {
   books: Book[];
   currentDropIds: string[];
-  error: unknown | null;
-
   loadBooks: () => Promise<Book[]>;
   uploadBook: (file: File) => Promise<Book>;
   setBooks: (books: Book[]) => void;
@@ -19,7 +18,6 @@ interface BookState {
   updateBook: (book: Book) => void;
   removeBook: (id: string) => void;
   clearBooks: () => void;
-  clearError: () => void;
 }
 
 const normalizeBook = (book: Book, index: number): Book => ({
@@ -32,7 +30,6 @@ const normalizeBook = (book: Book, index: number): Book => ({
 export const useBookStore = create<BookState>()((set) => ({
   books: [],
   currentDropIds: [],
-  error: null,
 
   loadBooks: async () => {
     try {
@@ -41,12 +38,11 @@ export const useBookStore = create<BookState>()((set) => ({
       set({
         books: books.map((book, index) => normalizeBook(book, index)),
         currentDropIds: [],
-        error: null,
       });
 
       return books;
     } catch (error) {
-      set({ error });
+      useAppErrorStore.getState().setError(error);
       throw error;
     }
   },
@@ -67,12 +63,11 @@ export const useBookStore = create<BookState>()((set) => ({
           ),
         ],
         currentDropIds: [...state.currentDropIds, book.id],
-        error: null,
       }));
 
       return book;
     } catch (error) {
-      set({ error });
+      useAppErrorStore.getState().setError(error);
       throw error;
     }
   },
@@ -81,7 +76,6 @@ export const useBookStore = create<BookState>()((set) => ({
     set({
       books: books.map((book, index) => normalizeBook(book, index)),
       currentDropIds: [],
-      error: null,
     }),
 
   addBook: (book) =>
@@ -119,8 +113,5 @@ export const useBookStore = create<BookState>()((set) => ({
     set({
       books: [],
       currentDropIds: [],
-      error: null,
     }),
-
-  clearError: () => set({ error: null }),
 }));
