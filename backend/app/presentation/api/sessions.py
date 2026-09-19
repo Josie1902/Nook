@@ -22,25 +22,30 @@ from app.presentation.api.dependencies import (
     get_reading_session_book_repository,
     get_reading_session_repository,
     get_research_generator,
-    get_retrieval_repository,
 )
 from app.presentation.api.schemas.session import (
     AddBookRequest,
+    ConfirmedResearchBookResponse,
     UpdateSessionRequest,
     ResearchConfirmRequest,
     ResearchRefineRequest,
     ResearchRequest,
     ResearchSelectionBookResponse,
     ResearchSelectionResponse,
+    ConfirmResearchResponse,
     SessionBookDetailResponse,
     SessionBookResponse,
     SessionDetailResponse,
     SessionResponse,
 )
 from app.application.use_cases.retrieval.ask_question import AskQuestionUseCase
-from app.presentation.api.schemas.message import AskQuestionRequest, AskQuestionResponse, BoundingBoxResponse, ChunkProvenanceResponse, CitationResponse, RetrievalMatchResponse
+from app.presentation.api.schemas.message import AnswerSegmentResponse, AskQuestionRequest, MessageResponse,AskQuestionResponse, BoundingBoxResponse, CitationLocationResponse, CitationResponse
 from app.application.use_cases.session.confirm_research_selection import ConfirmResearchSelectionUseCase
 from app.application.use_cases.session.list_books_in_session import ListBooksInSessionUseCase
+from app.application.use_cases.session.list_messages import ListSessionMessagesUseCase
+from app.domain.repositories.message_repository import MessageRepository
+from app.application.use_cases.session.delete_session import DeleteSessionUseCase
+from app.domain.repositories.citation_repository import CitationRepository
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
 
@@ -62,6 +67,21 @@ def create_session(
     session = use_case.execute(current_user.id)
     return SessionResponse(id=session.id, topic=session.topic, created_at=session.created_at, mode=SessionMode.RESEARCH)
 
+@router.delete(
+    "/{session_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def delete_session(
+    session_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    session_repository=Depends(get_reading_session_repository),
+):
+    use_case = DeleteSessionUseCase(session_repository)
+    use_case.execute(
+        session_id=session_id,
+        user_id=current_user.id,
+    )
+    
 @router.patch("", response_model=SessionResponse)
 def update_session(
     payload: UpdateSessionRequest,
@@ -86,16 +106,14 @@ def get_session(
     session_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
     session_repository=Depends(get_reading_session_repository),
-    session_book_repository=Depends(get_reading_session_book_repository),
 ):
     session = _get_owned_session(session_id, current_user, session_repository)
-    links = session_book_repository.list_by_session(session_id)
     return SessionDetailResponse(
         id=session.id,
         topic=session.topic,
         mode=session.mode,
         created_at=session.created_at,
-        books=[SessionBookResponse(book_id=l.book_id, added_at=l.added_at) for l in links],
+        description=session.description,
     )
 
 
@@ -173,13 +191,11 @@ def start_research(
     session_repository=Depends(get_reading_session_repository),
     book_repository=Depends(get_book_repository),
     session_book_repository=Depends(get_reading_session_book_repository),
-    message_repository=Depends(get_message_repository),
     recommender=Depends(get_book_recommender),
     research_generator=Depends(get_research_generator),
 ):
     use_case = ResearchSessionUseCase(
         session_repository=session_repository,
-        message_repository=message_repository,
         book_repository=book_repository,
         session_book_repository=session_book_repository,
         recommender=recommender,
@@ -205,13 +221,11 @@ def refine_research(
     session_repository=Depends(get_reading_session_repository),
     book_repository=Depends(get_book_repository),
     session_book_repository=Depends(get_reading_session_book_repository),
-    message_repository=Depends(get_message_repository),
     recommender=Depends(get_book_recommender),
     research_generator=Depends(get_research_generator),
 ):
     use_case = ResearchSessionUseCase(
         session_repository=session_repository,
-        message_repository=message_repository,
         book_repository=book_repository,
         session_book_repository=session_book_repository,
         recommender=recommender,
@@ -236,7 +250,7 @@ def refine_research(
     )
 
 
-@router.post("/{session_id}/research/confirm", response_model=ResearchSelectionResponse)
+@router.post("/{session_id}/research/confirm", response_model=ConfirmResearchResponse)
 def confirm_research_selection(
     session_id: uuid.UUID,
     payload: ResearchConfirmRequest,
@@ -260,15 +274,41 @@ def confirm_research_selection(
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
-    return ResearchSelectionResponse(
+    return ConfirmResearchResponse(
         mode=result["mode"],
         topic=result["topic"],
         description=result["description"],
-        books=[ResearchSelectionBookResponse(**book) for book in result["books"]],
+        books=[ConfirmedResearchBookResponse(**book) for book in result["books"]],
     )
 
 
-@router.post("/{session_id}/messages", response_model=AskQuestionResponse, status_code=status.HTTP_201_CREATED)
+@router.get("/{session_id}/messages", response_model=list[MessageResponse], status_code=status.HTTP_200_OK,
+)
+def list_messages(
+    session_id: uuid.UUID,
+    message_repository: MessageRepository = Depends(get_message_repository),
+    citation_repository: CitationRepository = Depends(get_citation_repository)
+):
+    use_case = ListSessionMessagesUseCase(message_repository, citation_repository)
+
+    messages = use_case.execute(session_id)
+
+    return [
+        MessageResponse(
+            id=message.id,
+            role=message.role.value,
+            content=message.content,
+            error_message=message.error_message,
+            created_at=message.created_at,
+        )
+        for message in messages
+    ]
+
+@router.post(
+    "/{session_id}/messages",
+    response_model=AskQuestionResponse,
+    status_code=status.HTTP_201_CREATED,
+)
 def ask_question(
     session_id: uuid.UUID,
     payload: AskQuestionRequest,
@@ -276,15 +316,18 @@ def ask_question(
     session_repository=Depends(get_reading_session_repository),
     session_book_repository=Depends(get_reading_session_book_repository),
     message_repository=Depends(get_message_repository),
-    retrieval_repository=Depends(get_retrieval_repository),
     chunk_search_repository=Depends(get_chunk_search_repository),
     embedding_provider=Depends(get_embedding_provider),
     answer_generator=Depends(get_answer_generator),
     citation_repository=Depends(get_citation_repository),
 ):
     session = session_repository.get_by_id(session_id)
+
     if session is None or session.user_id != current_user.id:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Session not found",
+        )
 
     if session.mode == SessionMode.RESEARCH:
         raise HTTPException(
@@ -296,61 +339,63 @@ def ask_question(
         session_repository=session_repository,
         session_book_repository=session_book_repository,
         message_repository=message_repository,
-        retrieval_repository=retrieval_repository,
         chunk_search_repository=chunk_search_repository,
         embedding_provider=embedding_provider,
         answer_generator=answer_generator,
-        citation_repository=citation_repository
+        citation_repository=citation_repository,
     )
+
     try:
-        result = use_case.execute(current_user.id, session_id, payload.content)
+        result = use_case.execute(
+            current_user.id,
+            session_id,
+            payload.content,
+        )
     except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        )
 
     return AskQuestionResponse(
         message_id=result.user_message.id,
         assistant_message_id=result.assistant_message.id,
-        answer=result.assistant_message.content,
-        retrieval_id=result.retrieval.id,
-        query=result.retrieval.query,
-        created_at=result.retrieval.created_at,
-        results=[
-            RetrievalMatchResponse(
-                chunk_id=m.chunk_id,
-                book_id=m.book_id,
-                content=m.content,
-                page_start=m.page_start,
-                page_end=m.page_end,
-                score=m.score,
-                rank=i,
-                provenance=[
-                    ChunkProvenanceResponse(
-                        chunk_id=p.chunk_id,
-                        page_number=p.page_number,
-                        bounding_boxes=[
-                            BoundingBoxResponse(
-                                left=b.left,
-                                top=b.top,
-                                right=b.right,
-                                bottom=b.bottom,
-                            )
-                            for b in p.bounding_boxes
-                        ],
-                    )
-                    for p in m.provenance
+        segments=[
+            AnswerSegmentResponse(
+                text=segment["text"],
+                citation_ids=[
+                    uuid.UUID(citation_id)
+                    for citation_id in segment["citation_ids"]
                 ],
             )
-            for i, m in enumerate(result.matches)
+            for segment in result.assistant_message.content["segments"]
         ],
         citations=[
             CitationResponse(
-                id=c.id,
-                book_title=c.book_title,
-                book_author=c.book_author,
-                page_start=c.page_start,
-                page_end=c.page_end,
-                quote=c.quote
+                id=citation.id,
+                book_id=citation.book_id,
+                book_title=citation.book_title,
+                book_author=citation.book_author,
+                quote=citation.quote,
+                page_start=citation.page_start,
+                page_end=citation.page_end,
+                order=citation.order,
+                locations=[
+                    CitationLocationResponse(
+                        page=location.page,
+                        bounding_boxes=[
+                            BoundingBoxResponse(
+                                left=box.left,
+                                top=box.top,
+                                right=box.right,
+                                bottom=box.bottom,
+                            )
+                            for box in location.bounding_boxes
+                        ],
+                    )
+                    for location in citation.locations
+                ],
             )
-            for c in result.citations
-        ]
+            for citation in result.citations
+        ],
     )

@@ -11,14 +11,14 @@ from app.application.retrieval.ports import (
     ChunkSearchMatch,
     ChunkSearchRepository,
 )
-from app.domain.entities.citation import (
-    Citation,
-    CitationBoundingBox,
-    CitationLocation,
+from app.application.use_cases.dtos import (
+    CitationBoundingBoxDTO,
+    CitationDTO,
+    CitationLocationDTO,
 )
+from app.domain.entities.citation import Citation
 from app.domain.entities.message import Message, MessageRole
-from app.domain.entities.retrieval import Retrieval
-from app.domain.entities.retrieval_result import RetrievalResult
+from app.domain.repositories.book_repository import BookRepository
 from app.domain.repositories.citation_repository import CitationRepository
 from app.domain.repositories.message_repository import MessageRepository
 from app.domain.repositories.reading_session_book_repository import (
@@ -27,7 +27,6 @@ from app.domain.repositories.reading_session_book_repository import (
 from app.domain.repositories.reading_session_repository import (
     ReadingSessionRepository,
 )
-from app.domain.repositories.retrieval_repository import RetrievalRepository
 
 
 DEFAULT_TOP_K = 8
@@ -41,7 +40,7 @@ class AnswerGenerationError(Exception):
 class AskQuestionResult:
     user_message: Message
     assistant_message: Message
-    citations: list[Citation]
+    citations: list[CitationDTO]
 
 
 class AskQuestionUseCase:
@@ -50,7 +49,6 @@ class AskQuestionUseCase:
         session_repository: ReadingSessionRepository,
         session_book_repository: ReadingSessionBookRepository,
         message_repository: MessageRepository,
-        retrieval_repository: RetrievalRepository,
         citation_repository: CitationRepository,
         chunk_search_repository: ChunkSearchRepository,
         embedding_provider: EmbeddingProvider,
@@ -60,7 +58,6 @@ class AskQuestionUseCase:
         self.session_repository = session_repository
         self.session_book_repository = session_book_repository
         self.message_repository = message_repository
-        self.retrieval_repository = retrieval_repository
         self.citation_repository = citation_repository
         self.chunk_search_repository = chunk_search_repository
         self.embedding_provider = embedding_provider
@@ -73,13 +70,13 @@ class AskQuestionUseCase:
         session_id: uuid.UUID,
         content: str,
     ) -> AskQuestionResult:
-        # 1. Validate the session.
+        # 1. Validate session.
         session = self.session_repository.get_by_id(session_id)
 
         if session is None or session.user_id != user_id:
             raise ValueError("Session not found")
 
-        # 2. Get the books belonging to this session.
+        # 2. Get books belonging to the session.
         book_ids = [
             link.book_id
             for link in self.session_book_repository.list_by_session(
@@ -87,7 +84,7 @@ class AskQuestionUseCase:
             )
         ]
 
-        # 3. Persist the user's question.
+        # 3. Persist user's question.
         user_message = self.message_repository.add(
             Message(
                 session_id=session_id,
@@ -99,42 +96,17 @@ class AskQuestionUseCase:
             )
         )
 
-        # 4. Embed the user's question.
+        # 4. Embed question.
         query_embedding = self.embedding_provider.embed([content])[0]
 
-        # 5. Search only chunks belonging to books in this session.
+        # 5. Search chunks.
         matches = self.chunk_search_repository.search(
             book_ids=book_ids,
             query_embedding=query_embedding,
             top_k=self.top_k,
         )
 
-        # 6. Persist retrieval information.
-        retrieval = self.retrieval_repository.add(
-            Retrieval(
-                message_id=user_message.id,
-                query=content,
-                metadata={
-                    "top_k": self.top_k,
-                    "book_ids": [str(book_id) for book_id in book_ids],
-                },
-            )
-        )
-
-        if matches:
-            self.retrieval_repository.add_results(
-                [
-                    RetrievalResult(
-                        retrieval_id=retrieval.id,
-                        chunk_id=match.chunk_id,
-                        rank=rank,
-                        score=match.score,
-                    )
-                    for rank, match in enumerate(matches, start=1)
-                ]
-            )
-
-        # 7. Convert retrieved chunks into generation context.
+        # 6. Build generation context.
         context_chunks = [
             ContextChunk(
                 chunk_id=match.chunk_id,
@@ -146,12 +118,13 @@ class AskQuestionUseCase:
             for match in matches
         ]
 
-        # 8. Generate the answer.
+        # 7. Generate answer.
         try:
             generated_answer = self.answer_generator.generate(
                 content,
                 context_chunks,
             )
+
         except Exception as exc:
             self.message_repository.add(
                 Message(
@@ -167,20 +140,17 @@ class AskQuestionUseCase:
 
             raise AnswerGenerationError(str(exc)) from exc
 
-        # 9. Generate the assistant message ID before creating citations.
+        # 8. Generate assistant message ID.
         assistant_message_id = uuid.uuid4()
 
-        # 10. Create immutable citation snapshots.
+        # 9. Create domain citations.
         citations = self._create_citations(
             assistant_message_id=assistant_message_id,
             generated_answer=generated_answer,
             matches=matches,
         )
 
-        # 11. Build the assistant message.
-        #
-        # Only citation IDs are stored in the message.
-        # Full citation data lives in the Citation table.
+        # 10. Build assistant message.
         assistant_message = Message(
             id=assistant_message_id,
             session_id=session_id,
@@ -196,19 +166,25 @@ class AskQuestionUseCase:
             role=MessageRole.ASSISTANT,
         )
 
-        # 12. Persist the assistant message and citations.
+        # 11. Persist assistant message and citations.
         self.message_repository.add(assistant_message)
         self.citation_repository.add_many(citations)
+
+        # 12. Build DTOs for the caller.
+        citations_dto = self._build_citation_dtos(
+            citations=citations,
+            matches=matches,
+        )
 
         return AskQuestionResult(
             user_message=user_message,
             assistant_message=assistant_message,
-            citations=citations,
+            citations=citations_dto,
         )
 
+    @staticmethod
     def _create_citations(
-        self,
-        assistant_message_id: uuid.UUID,
+        assistant_message_id: uuid.UUID, 
         generated_answer: GeneratedAnswer,
         matches: list[ChunkSearchMatch],
     ) -> list[Citation]:
@@ -223,49 +199,30 @@ class AskQuestionUseCase:
             generated_answer.segments,
             start=1,
         ):
-            if segment.citation is None:
-                continue
-
-            match = matches_by_chunk_id.get(
-                segment.citation.chunk_id
-            )
-
-            if match is None:
-                raise AnswerGenerationError(
-                    "Generated citation references unknown chunk "
-                    f"{segment.citation.chunk_id}"
+            for generated_citation in segment.citations:
+                match = matches_by_chunk_id.get(
+                    generated_citation.chunk_id
                 )
 
-            locations = [
-                CitationLocation(
-                    page=provenance.page_number,
-                    bounding_boxes=[
-                        CitationBoundingBox(
-                            left=box.left,
-                            top=box.top,
-                            right=box.right,
-                            bottom=box.bottom,
-                        )
-                        for box in provenance.bounding_boxes
-                    ],
-                )
-                for provenance in match.provenance
-            ]
+                if match is None:
+                    raise AnswerGenerationError(
+                        "Generated citation references unknown chunk "
+                        f"{generated_citation.chunk_id}"
+                    )
 
-            citations.append(
-                Citation(
-                    message_id=assistant_message_id,
-                    book_id=match.book_id,
-                    chunk_id=match.chunk_id,
-                    book_title=match.book_title,
-                    book_author=match.book_author,
-                    page_start=match.page_start,
-                    page_end=match.page_end,
-                    quote=segment.citation.quote,
-                    locations=locations,
-                    order=order,
+                citations.append(
+                    Citation(
+                        message_id=assistant_message_id,
+                        book_id=match.book_id,
+                        chunk_id=match.chunk_id,
+                        book_title=match.book_title,
+                        book_author=match.book_author,
+                        quote=generated_citation.quote,
+                        page_start=match.page_start,
+                        page_end=match.page_end,
+                        order=order,
+                    )
                 )
-            )
 
         return citations
 
@@ -279,23 +236,67 @@ class AskQuestionUseCase:
             for citation in citations
         }
 
-        segments: list[dict] = []
+        return [
+            {
+                "text": segment.text,
+                "citation_ids": (
+                    [str(citation.id)]
+                    if (citation := citations_by_order.get(order))
+                    else []
+                ),
+            }
+            for order, segment in enumerate(
+                generated_answer.segments,
+                start=1,
+            )
+        ]
 
-        for order, segment in enumerate(
-            generated_answer.segments,
-            start=1,
-        ):
-            citation = citations_by_order.get(order)
+    def _build_citation_dtos(
+        self,
+        citations: list[Citation],
+        matches: list[ChunkSearchMatch],
+    ) -> list[CitationDTO]:
+        matches_by_chunk_id = {
+            match.chunk_id: match
+            for match in matches
+        }
 
-            segments.append(
-                {
-                    "text": segment.text,
-                    "citation_ids": (
-                        [str(citation.id)]
-                        if citation is not None
-                        else []
-                    ),
-                }
+        result: list[CitationDTO] = []
+
+        for citation in citations:
+            match = matches_by_chunk_id.get(citation.chunk_id)
+
+            if match is None:
+                continue
+
+            locations = [
+                CitationLocationDTO(
+                    page=provenance.page_number,
+                    bounding_boxes=[
+                        CitationBoundingBoxDTO(
+                            left=box.left,
+                            top=box.top,
+                            right=box.right,
+                            bottom=box.bottom,
+                        )
+                        for box in provenance.bounding_boxes
+                    ],
+                )
+                for provenance in match.provenance
+            ]
+
+            result.append(
+                CitationDTO(
+                    id=citation.id,
+                    book_id=citation.book_id,
+                    book_title=citation.book_title,
+                    book_author=citation.book_author,
+                    quote=citation.quote,
+                    page_start=citation.page_start,
+                    page_end=citation.page_end,
+                    order=citation.order,
+                    locations=locations,
+                )
             )
 
-        return segments
+        return result

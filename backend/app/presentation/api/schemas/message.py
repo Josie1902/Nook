@@ -1,12 +1,15 @@
-from typing import Any
-import uuid
 from datetime import datetime
-
+import uuid
 from pydantic import BaseModel
 
 
 class AskQuestionRequest(BaseModel):
     content: str
+
+
+class AnswerSegmentResponse(BaseModel):
+    text: str
+    citation_ids: list[uuid.UUID]
 
 
 class BoundingBoxResponse(BaseModel):
@@ -16,38 +19,32 @@ class BoundingBoxResponse(BaseModel):
     bottom: float
 
 
-class ChunkProvenanceResponse(BaseModel):
-    chunk_id: uuid.UUID
-    page_number: int
+class CitationLocationResponse(BaseModel):
+    page: int
     bounding_boxes: list[BoundingBoxResponse]
-
-
-class RetrievalMatchResponse(BaseModel):
-    chunk_id: uuid.UUID
-    book_id: uuid.UUID
-    content: str
-    page_start: int
-    page_end: int
-    score: float
-    rank: int
-    provenance: list[ChunkProvenanceResponse]
 
 
 class CitationResponse(BaseModel):
     id: uuid.UUID
+    book_id: uuid.UUID
     book_title: str
     book_author: str
+    quote: str
     page_start: int
     page_end: int
-    quote: str
+    order: int
+    locations: list[CitationLocationResponse]
 
 
 class AskQuestionResponse(BaseModel):
     message_id: uuid.UUID
     assistant_message_id: uuid.UUID
-    answer: dict[str, Any]
-    retrieval_id: uuid.UUID
-    query: str
-    created_at: datetime
-    results: list[RetrievalMatchResponse]
+    segments: list[AnswerSegmentResponse]
     citations: list[CitationResponse]
+
+class MessageResponse(BaseModel):
+    id: uuid.UUID
+    role: str
+    content: dict
+    error_message: str | None
+    created_at: datetime

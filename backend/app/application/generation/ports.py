@@ -58,7 +58,7 @@ class GeneratedCitation:
 @dataclass
 class AnswerSegment:
     text: str
-    citation: GeneratedCitation | None = None
+    citations: list[GeneratedCitation] = field(default_factory=list)
 
 
 @dataclass

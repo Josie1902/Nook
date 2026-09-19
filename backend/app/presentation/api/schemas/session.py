@@ -1,7 +1,6 @@
 import uuid
 from datetime import datetime
 from typing import List
-
 from pydantic import BaseModel
 
 
@@ -38,13 +37,21 @@ class ResearchSelectionBookResponse(BaseModel):
     reason: str
     selected: bool = True
 
-
 class ResearchSelectionResponse(BaseModel):
     mode: str
     topic: str
     description: str
-    books: List[ResearchSelectionBookResponse]
+    books: list[ResearchSelectionBookResponse]
 
+class ConfirmedResearchBookResponse(BaseModel):
+    book_id: uuid.UUID
+    selected: bool
+
+class ConfirmResearchResponse(BaseModel):
+    mode: str
+    topic: str
+    description: str
+    books: list[ConfirmedResearchBookResponse]
 
 class ResearchRequest(BaseModel):
     input: str
@@ -68,4 +75,4 @@ class SessionDetailResponse(BaseModel):
     topic: str
     mode: str
     created_at: datetime
-    books: List[SessionBookResponse]
+    description: str | None= None

@@ -33,3 +33,6 @@ class Message:
     id: uuid.UUID = field(default_factory=uuid.uuid4)
     role: MessageRole = MessageRole.USER
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+
+    def add_citations(self, citations: list[dict[str, Any]]) -> None:
+        self.content["citations"] = citations

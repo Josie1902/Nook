@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from typing import List
 
 from app.domain.entities.citation import Citation
-
+from app.application.use_cases.dtos import CitationDTO
 
 class CitationRepository(ABC):
     @abstractmethod
@@ -10,5 +10,5 @@ class CitationRepository(ABC):
         ...
 
     @abstractmethod
-    def list_by_message(self, message_id) -> List[Citation]:
+    def list_by_message(self, message_id) -> List[CitationDTO]:
         ...

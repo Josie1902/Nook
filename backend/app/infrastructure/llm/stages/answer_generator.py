@@ -14,14 +14,9 @@ from app.infrastructure.llm.providers.base import BaseLLMClient
 from app.infrastructure.llm.schemas import LLMMessage
 
 
-class GeneratedCitationResponse(BaseModel):
-    chunk_id: str
-    quote: str
-
-
 class AnswerSegmentResponse(BaseModel):
     text: str
-    citation: GeneratedCitationResponse | None = None
+    citations: list[str] = Field(default_factory=list)
 
 
 class GeneratedAnswerResponse(BaseModel):
@@ -45,9 +40,10 @@ class LLMAnswerGenerator(AnswerGenerator):
 
         context = "\n\n".join(
             (
-                f"[Source Chunk ID: {chunk.chunk_id}]\n"
-                f"Book: {chunk.book_title}\n"
-                f"Content:\n{chunk.content}"
+                f"[Chunk {chunk.chunk_id}]\n"
+                f"Title: {chunk.book_title}\n"
+                f"Author: {chunk.book_author}\n"
+                f"Passage:\n{chunk.content}"
             )
             for chunk in context_chunks
         )
@@ -56,35 +52,46 @@ class LLMAnswerGenerator(AnswerGenerator):
             LLMMessage(
                 role="user",
                 content=(
-                    "Answer the question using only the provided book evidence.\n\n"
+                    "Answer the reader's question using ONLY the provided book passages.\n\n"
 
-                    "Return a JSON object containing a list of answer segments.\n"
-                    "Each segment contains:\n"
-                    "- text: a piece of the answer\n"
-                    "- citation: the source evidence supporting that text, or null\n"
-                    "  if the segment does not require a citation\n\n"
-
-                    "Citation rules:\n"
-                    "- Every factual claim must have a supporting citation.\n"
-                    "- citation.chunk_id must be exactly one of the provided source "
-                    "chunk IDs.\n"
-                    "- citation.quote must be an exact quote from that source chunk.\n"
-                    "- Do not invent or modify quotes.\n"
-                    "- Keep the quote short and directly relevant to the claim.\n"
-                    "- Do not cite irrelevant chunks.\n\n"
-
-                    "Answering rules:\n"
-                    "- Use only information explicitly supported by the provided "
-                    "book evidence.\n"
+                    "You are a helpful librarian. Answer directly and naturally using "
+                    "the information in the passages.\n"
+                    "- Do not summarize the books.\n"
+                    "- Do not repeatedly say \"the book says\" or \"the author says\".\n"
+                    "- Explain the relevant ideas directly to the reader.\n"
+                    "- Do not add information that is not supported by the passages.\n"
                     "- Do not use outside knowledge.\n"
-                    "- Do not make assumptions beyond the evidence.\n"
-                    "- If the evidence is insufficient, return exactly one segment "
-                    "with this text: "
-                    "\"There is not enough information in the provided books.\" "
-                    "and set citation to null.\n\n"
+                    "- Do not mention chunks or citations in the answer text.\n\n"
 
-                    f"Question:\n{question}\n\n"
-                    f"Book evidence:\n{context}"
+                    "CITATIONS\n"
+                    "- Every answer segment must have at least one citation when "
+                    "the segment contains information from the passages.\n"
+                    "- A segment may have multiple citations.\n"
+                    "- Each citation must be the exact ID of a provided chunk.\n"
+                    "- Only cite chunks that directly support the segment.\n"
+                    "- Do not invent chunk IDs.\n"
+                    "- Do not provide quotes. The application will obtain the exact "
+                    "quote from the cited chunk.\n\n"
+
+                    "OUTPUT\n"
+                    "Return ONLY valid JSON:\n"
+                    "{\n"
+                    '  "segments": [\n'
+                    "    {\n"
+                    '      "text": "natural answer",\n'
+                    '      "citations": ["chunk-id"]\n'
+                    "    }\n"
+                    "  ]\n"
+                    "}\n\n"
+
+                    "If there is not enough information, return exactly:\n"
+                    "{"
+                    '"segments":[{"text":"There is not enough information in the '
+                    'provided books.","citations":[]}]'
+                    "}\n\n"
+
+                    f"QUESTION:\n{question}\n\n"
+                    f"BOOK PASSAGES:\n{context}"
                 ),
             )
         ]
@@ -95,18 +102,23 @@ class LLMAnswerGenerator(AnswerGenerator):
             schema=GeneratedAnswerResponse,
         )
 
+        chunks_by_id = {
+            chunk.chunk_id: chunk
+            for chunk in context_chunks
+        }
+
         return GeneratedAnswer(
             segments=[
                 AnswerSegment(
                     text=segment.text,
-                    citation=(
+                    citations=[
                         GeneratedCitation(
-                            chunk_id=uuid.UUID(segment.citation.chunk_id),
-                            quote=segment.citation.quote,
+                            chunk_id=chunk_id,
+                            quote=chunks_by_id[chunk_id].content,
                         )
-                        if segment.citation
-                        else None
-                    ),
+                        for citation in segment.citations
+                        if (chunk_id := uuid.UUID(citation)) in chunks_by_id
+                    ],
                 )
                 for segment in result.segments
             ]
