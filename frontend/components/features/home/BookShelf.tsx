@@ -10,7 +10,6 @@ import { Book } from "@/types/book";
 import { BookSpine } from "./BookSpine";
 import { OpenBook } from "./OpenBook";
 import { useState } from "react";
-import { mockReadingSessions } from "@/lib/mock/mock_sessions";
 
 export function BookShelf() {
 
@@ -231,7 +230,7 @@ function Shelf({ books }: { books: Book[] }) {
       <OpenBook
         book={openBook}
         onClose={() => setOpenBook(null)}
-        readingSessions={mockReadingSessions}
+        readingSessions={[]}
         onOpenReadingSession={() => {
           // connect this to your Ask Nook session
           console.log("Open reading sessions", openBook?.readingSessionIds);
