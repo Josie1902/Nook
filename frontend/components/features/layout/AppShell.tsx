@@ -1,4 +1,3 @@
-import { mockUser } from "@/lib/mock/mock-user";
 import type { ReactNode } from "react";
 import { Navbar } from "./Navbar";
 
