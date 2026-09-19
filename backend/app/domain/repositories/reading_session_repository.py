@@ -21,3 +21,7 @@ class ReadingSessionRepository(ABC):
     @abstractmethod
     def list_by_user(self, user_id: uuid.UUID) -> List[ReadingSession]:
         ...
+
+    @abstractmethod
+    def delete(self, session_id: uuid.UUID) -> None:
+        ...

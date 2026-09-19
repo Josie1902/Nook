@@ -62,3 +62,10 @@ class SQLAlchemyReadingSessionRepository(ReadingSessionRepository):
             .all()
         )
         return [_to_entity(m) for m in models]
+
+    def delete(self, session_id: uuid.UUID) -> None:
+        session = self.session.get(ReadingSessionModel, session_id)
+
+        if session is not None:
+            self.session.delete(session)
+            self.session.commit()

@@ -20,7 +20,8 @@ class MessageModel(Base):
 
     session_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("reading_sessions.id"),
+        ForeignKey("reading_sessions.id",
+        ondelete="CASCADE",),
         nullable=False,
         index=True,
     )

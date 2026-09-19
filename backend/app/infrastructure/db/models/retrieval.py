@@ -20,7 +20,7 @@ class RetrievalModel(Base):
 
     message_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("messages.id"),
+        ForeignKey("messages.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
@@ -55,7 +55,7 @@ class RetrievalResultModel(Base):
 
     retrieval_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("retrievals.id"),
+        ForeignKey("retrievals.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
