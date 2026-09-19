@@ -75,6 +75,7 @@ class Settings(BaseSettings):
     POSTGRES_PASSWORD: str
 
     S3_ENDPOINT_URL: str
+    S3_PUBLIC_ENDPOINT_URL: str
     S3_ACCESS_KEY: str
     S3_SECRET_KEY: str
     S3_BUCKET: str

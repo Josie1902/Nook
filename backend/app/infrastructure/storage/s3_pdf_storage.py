@@ -5,7 +5,7 @@ from app.application.storage.pdf_storage import PdfStorage
 
 
 class S3PdfStorage(PdfStorage):
-    def __init__(self, endpoint_url: str, access_key: str, secret_key: str, bucket: str, region: str):
+    def __init__(self, endpoint_url: str, public_endpoint_url:str, access_key: str, secret_key: str, bucket: str, region: str):
         self._client = boto3.client(
             "s3",
             endpoint_url=endpoint_url,
@@ -15,6 +15,13 @@ class S3PdfStorage(PdfStorage):
         )
         self._bucket = bucket
         self._ensure_bucket()
+        self._public_client = boto3.client(
+            "s3",
+            endpoint_url=public_endpoint_url,  # http://localhost:8333
+            aws_access_key_id=access_key,
+            aws_secret_access_key=secret_key,
+            region_name=region,
+        )
 
     def _ensure_bucket(self) -> None:
         try:
@@ -31,3 +38,13 @@ class S3PdfStorage(PdfStorage):
 
     def delete(self, storage_key: str) -> None:
         self._client.delete_object(Bucket=self._bucket, Key=storage_key)
+
+    def generate_presigned_url(self, storage_key: str, expires_in: int = 900) -> str:
+        return self._public_client.generate_presigned_url(
+            ClientMethod="get_object",
+            Params={
+                "Bucket": self._bucket,
+                "Key": storage_key,
+            },
+            ExpiresIn=expires_in,
+        )

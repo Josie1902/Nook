@@ -360,3 +360,33 @@ def retry_book_processing(
         completed_at=run.completed_at,
         created_at=run.created_at,
     )
+
+@router.get(
+    "/{book_id}/presigned-url",
+)
+def get_book_pdf_url(
+    book_id: uuid.UUID,
+    user: User = Depends(get_current_user),
+    book_repository=Depends(get_book_repository),
+    storage=Depends(get_pdf_storage),
+):
+    book = book_repository.get_by_id(book_id)
+
+    if book is None or book.user_id != user.id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Book not found",
+        )
+
+    if not book.storage_key:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Book PDF not found",
+        )
+
+    url = storage.generate_presigned_url(
+        storage_key=book.storage_key,
+        expires_in=900,
+    )
+
+    return {"url": url}
