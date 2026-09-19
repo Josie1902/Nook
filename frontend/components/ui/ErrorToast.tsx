@@ -5,11 +5,11 @@ import { useEffect } from "react";
 import { toast } from "sonner";
 import { CircleAlert } from "lucide-react";
 
-import { useBookStore } from "@/stores/book-store";
+import { useAppErrorStore } from "@/stores/app-error-store";
 
 export function GlobalErrorToaster() {
-  const error = useBookStore((state) => state.error);
-  const clearError = useBookStore((state) => state.clearError);
+  const error = useAppErrorStore((state) => state.error);
+  const clearError = useAppErrorStore((state) => state.clearError);
 
   useEffect(() => {
     if (!error) return;
