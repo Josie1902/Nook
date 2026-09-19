@@ -54,7 +54,6 @@ class OpenAITokenizerConfig(BaseModel):
     max_tokens: int
 
 class TokenizerConfig(BaseModel):
-    provider: Literal["openai", "huggingface"] = "huggingface"
     openai: OpenAITokenizerConfig
     hugging_face: HuggingFaceTokenizerConfig
 
