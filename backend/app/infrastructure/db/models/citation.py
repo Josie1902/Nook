@@ -14,8 +14,8 @@ class CitationModel(Base):
     message_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("messages.id", ondelete="CASCADE"), nullable=False, index=True,
     )
-    book_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("books.id"), nullable=False)
-    chunk_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("chunks.id"), nullable=False)
+    book_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("books.id", ondelete="SET NULL"), nullable=True)
+    chunk_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("chunks.id", ondelete="SET NULL"), nullable=True)
     book_title: Mapped[str] = mapped_column(String, nullable=False)
     book_author: Mapped[str] = mapped_column(String, nullable=False)
     page_start: Mapped[int] = mapped_column(Integer, nullable=False)
