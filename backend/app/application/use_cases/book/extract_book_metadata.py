@@ -51,7 +51,7 @@ class ExtractBookMetadataUseCase:
             )
 
             # 5. Search external metadata provider
-            if identity.isbn:
+            if identity.isbn and identity.isbn != "None":
                 result = self.metadata_provider.search_by_isbn(
                     identity.isbn
                 )
