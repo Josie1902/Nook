@@ -1,3 +1,34 @@
+# Nook
+
+![Nook](https://drive.usercontent.google.com/download?id=1kw9u9ppJ98CBV8b6o9yr-Xa1OYKSh6FC&export=view&authuser=0)
+
+Nook is an AI-powered reading and research application that lets you **chat with your books**.
+
+## What It Does
+
+Nook turns your PDF books into a searchable, conversational knowledge base.
+
+You can:
+
+* 📚 **Upload PDF books** and let Nook process their content automatically.
+![Home](https://drive.usercontent.google.com/download?id=1Z_Yb1-QgBLqLL9oCCKT6-laUzHyqDCsa&export=view&authuser=0)
+
+* ✏️ **Edit book metadata** such as the title, author, ISBN, description, and topics.
+![Metadata](https://drive.usercontent.google.com/download?id=1jSFZ8aJ3AcyLm9k4uy1ZbfczilVRsNZl&export=view&authuser=0)
+
+* 🔎 **Search across your books** using semantic search rather than just matching keywords.
+* 🧠 **Research a topic across multiple books** before starting a focused conversation.
+![Research](https://drive.usercontent.google.com/download?id=1AoBI1LN9nUot7A6cS9dFFHvFWo2Ersyy&export=view&authuser=0)
+
+* 💬 **Ask questions about your books** and receive answers grounded in their content.
+* 📖 **See citations from the original books**, including the relevant quote and page number.
+* 🗂️ **Organize books into reading sessions** and select which books should be used for a conversation.
+![Chat](https://drive.usercontent.google.com/download?id=1kHQ_krIQpo0vTcjv3jw6vkx3nxxtz58H&export=view&authuser=0)
+
+* 📄 **Open the PDF viewer directly from a citation**, jump to the referenced page, and view the original passage in context alongside the direct quote
+![Pdf Viewer](https://drive.usercontent.google.com/download?id=14joDMLE0IMxtsSAj-SpHEI54Z_kgLnhe&export=view&authuser=0)
+
+
 # Development Setup
 
 This guide explains how to set up the project for local development.
@@ -72,7 +103,7 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 API_PORT=8000
 FRONTEND_PORT=3000
 
-MAX_PDF_SIZE_MB=20
+MAX_PDF_SIZE_MB=30
 PROCESS_CONFIG_VERSION=v0-init
 ```
 
