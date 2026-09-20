@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 
 import {
@@ -10,88 +10,134 @@ import {
 import { Book } from "@/lib/api/types";
 import { useBookStore } from "@/stores/book-store";
 import { ProcessingBookCard } from "./ProcessingBookCard";
+import { useAppErrorStore } from "@/stores/app-error-store";
 
 export function LibrarianQueue() {
   const [processingBooks, setProcessingBooks] = useState<Book[]>([]);
   const updateBook = useBookStore((state) => state.updateBook);
+  const loadBooks = useBookStore((state) => state.loadBooks);
+
+  const processingBookIds = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     let isCancelled = false;
-
-    // The backend is the source of truth for which books are still
-    // in the processing queue.
-    const loadProcessingBooks = async () => {
+  
+    const pollProcessingBooks = async () => {
       try {
-        const books = await getIncompleteProcessingBooks();
         
-
+        // 1. Discover any new books that are currently processing.
+        const queueBooks = await getIncompleteProcessingBooks();
+      
         if (isCancelled) {
           return;
         }
-
-        // Update the queue first so newly-processing books are added
-        // and completed/cancelled books are eventually removed.
-        setProcessingBooks(books);
-
-        // Refresh the processing run for each book so the card has
-        // the latest status, stage, metrics, and error information.
+      
+        // Add any new books to the processing set.
+        for (const book of queueBooks) {
+          processingBookIds.current.add(book.id);
+        }
+      
+        // 2.Poll every book we're currently tracking.
+        const booksToPoll = Array.from(processingBookIds.current);
+      
         const updatedBooks = await Promise.all(
-          books.map(async (book) => {
+          booksToPoll.map(async (bookId) => {
             try {
-              const processing = await getBookProcessing(book.id);
-
-              const updatedBook = {
-                ...book,
-                processing_status: processing.status,
-                processing_stage: processing.stage,
-                processing_metrics: processing.metrics,
-                processing_error: processing.error
-                  ? {
-                      code: processing.error.code,
-                      message: processing.error.message,
-                      details: processing.error.details,
-                    }
-                  : null,
-              };
-              if (!isCancelled) {
-                updateBook(updatedBook);
-              }
+              const processing = await getBookProcessing(bookId);
             
-              return updatedBook;
-            } catch {
-              // Keep the book data from the queue endpoint if the
-              // individual processing request fails.
-              return book;
+              return {
+                bookId,
+                processing,
+              };
+            } catch (error) {
+              useAppErrorStore.getState().setError(error);
+              return null;
             }
           }),
         );
-
-        if (!isCancelled) {
-          setProcessingBooks(updatedBooks);
+      
+        if (isCancelled) {
+          return;
         }
-      } catch {
-        // Keep the current queue if polling fails.
-        // The next polling cycle will try again.
+      
+        let hasCompletedBook = false;
+      
+        // 3. Update the canonical Zustand books with the latest processing information.
+        for (const result of updatedBooks) {
+          if (!result) {
+            continue;
+          }
+        
+          const { bookId, processing } = result;
+        
+          // If the book has completed processing, remove it from the set of books we're tracking.
+          if (
+            processing.status === "completed" ||
+            processing.status === "failed" ||
+            processing.status === "cancelled"
+          ) {
+            processingBookIds.current.delete(bookId);
+          
+            if (processing.status === "completed") {
+              hasCompletedBook = true;
+            }
+          }
+        
+          // Update the book in Zustand with the latest processing information.
+          const existingBook = useBookStore
+            .getState()
+            .books.find((book) => book.id === bookId);
+        
+          if (existingBook) {
+            updateBook({
+              ...existingBook,
+              processing_status: processing.status,
+              processing_stage: processing.stage,
+              processing_metrics: processing.metrics,
+              processing_error: processing.error
+                ? {
+                    code: processing.error.code,
+                    message: processing.error.message,
+                    details: processing.error.details,
+                  }
+                : null,
+            });
+          }
+        }
+      
+        // 4. Update the local state with the latest processing books.
+        const currentBooks = useBookStore.getState().books;
+      
+        const currentProcessingBooks = currentBooks.filter((book) =>
+          processingBookIds.current.has(book.id),
+        );
+      
+        setProcessingBooks(currentProcessingBooks);
+      
+        // 5. If any book has completed processing, reload the canonical list of books.
+        if (hasCompletedBook && !isCancelled) {
+          await loadBooks();
+        }
+
+      } catch (error) {
+        useAppErrorStore.getState().setError(error);
       }
     };
-
-    // Load immediately when the component mounts.
-    void loadProcessingBooks();
-
-    // Refresh periodically so both the queue and individual processing
-    // run state stay up to date.
+    
+    void pollProcessingBooks();
+  
     const intervalId = window.setInterval(() => {
-      void loadProcessingBooks();
+      void pollProcessingBooks();
     }, 5000);
-
+  
     return () => {
       isCancelled = true;
       window.clearInterval(intervalId);
     };
-  }, []);
-
+  }, [loadBooks, updateBook]);
+  
   const totalCount = processingBooks.length;
-
+  
   if (totalCount === 0) {
     return null;
   }

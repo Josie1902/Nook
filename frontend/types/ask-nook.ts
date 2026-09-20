@@ -81,3 +81,12 @@ export interface AskQuestionResponse {
   segments: AssistantMessageSegment[];
   citations: Citation[];
 }
+
+export interface ReadingSession {
+  id: string;
+  book_id: string;
+  title: string;
+  started_at: string;
+  updated_at: string;
+  message_count: number;
+}

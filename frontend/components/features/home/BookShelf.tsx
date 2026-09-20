@@ -1,7 +1,6 @@
 "use client";
 
 import { motion } from "motion/react";
-import { useShallow } from "zustand/shallow";
 
 import { useBookStore } from "@/stores/book-store";
 import { MAX_BOOKS } from "@/lib/books";
@@ -13,15 +12,11 @@ import { useState } from "react";
 
 export function BookShelf() {
 
-  const books = useBookStore(
-    useShallow((state) =>
-      state.books
-        .filter(
-          (book) => book.processing_status === "completed",
-        )
-        .slice(0, MAX_BOOKS),
-    ),
-  );
+  const allBooks = useBookStore((state) => state.books);
+
+  const books = allBooks
+    .filter((book) => book.processing_status === "completed")
+    .slice(0, MAX_BOOKS);
 
   const isFull = books.length >= MAX_BOOKS;
 

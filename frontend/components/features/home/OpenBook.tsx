@@ -290,7 +290,7 @@ export function OpenBook({
                             </p>
 
                             <p className="mt-1 text-[9px] text-(--subtle)">
-                              {session.startedAt}
+                              {session.started_at}
                             </p>
                           </div>
 
